@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "BECharacter.generated.h"
 
+class UBECombatComponent;
+
 UCLASS()
 class BRUISEDEGOPROTOTYPE_API ABECharacter : public ACharacter
 {
@@ -13,4 +15,11 @@ class BRUISEDEGOPROTOTYPE_API ABECharacter : public ACharacter
 
 public:
 	ABECharacter();
+
+	UFUNCTION(BlueprintPure, Category="Combat")
+	bool IsInFightingStance() const;
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat")
+	TObjectPtr<UBECombatComponent> CombatComponent;
 };
