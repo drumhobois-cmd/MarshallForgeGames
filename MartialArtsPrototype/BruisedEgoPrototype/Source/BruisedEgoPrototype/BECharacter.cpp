@@ -2,6 +2,7 @@
 
 #include "BECharacter.h"
 #include "BECombatComponent.h"
+#include "EnhancedInputComponent.h"
 
 ABECharacter::ABECharacter()
 {
@@ -11,4 +12,22 @@ ABECharacter::ABECharacter()
 bool ABECharacter::IsInFightingStance() const
 {
 	return CombatComponent->IsInFightingStance();
+}
+
+void ABECharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		if (FightingStanceAction)
+		{
+			EIC->BindAction(FightingStanceAction, ETriggerEvent::Started, this, &ABECharacter::OnFightingStanceTriggered);
+		}
+	}
+}
+
+void ABECharacter::OnFightingStanceTriggered()
+{
+	CombatComponent->ToggleFightingStance();
 }

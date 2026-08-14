@@ -11,16 +11,25 @@ UBECombatComponent::UBECombatComponent()
 void UBECombatComponent::EnterFightingStance()
 {
 	bIsInFightingStance = true;
+	UE_LOG(LogTemp, Log, TEXT("Fighting Stance: ON"));
 }
 
 void UBECombatComponent::ExitFightingStance()
 {
 	bIsInFightingStance = false;
+	UE_LOG(LogTemp, Log, TEXT("Fighting Stance: OFF"));
 }
 
 void UBECombatComponent::ToggleFightingStance()
 {
-	bIsInFightingStance = !bIsInFightingStance;
+	if (bIsInFightingStance)
+	{
+		ExitFightingStance();
+	}
+	else
+	{
+		EnterFightingStance();
+	}
 }
 
 bool UBECombatComponent::IsInFightingStance() const

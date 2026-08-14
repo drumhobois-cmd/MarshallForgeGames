@@ -7,6 +7,7 @@
 #include "BECharacter.generated.h"
 
 class UBECombatComponent;
+class UInputAction;
 
 UCLASS()
 class BRUISEDEGOPROTOTYPE_API ABECharacter : public ACharacter
@@ -20,6 +21,14 @@ public:
 	bool IsInFightingStance() const;
 
 protected:
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> FightingStanceAction;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat")
 	TObjectPtr<UBECombatComponent> CombatComponent;
+
+private:
+	void OnFightingStanceTriggered();
 };
