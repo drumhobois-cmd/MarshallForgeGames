@@ -1,0 +1,39 @@
+﻿# Unreal Engine generated folders
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Visual Studio / IDE
+.vs/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Build / debug output
+Debug/
+DebugGame/
+Development/
+Release/
+x64/
+
+# Unreal generated files
+*.opensdf
+*.sdf
+*.tmp
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local Claude settings
+.claude/settings.local.json
