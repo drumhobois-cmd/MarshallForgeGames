@@ -24,10 +24,19 @@ void ABECharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EIC->BindAction(FightingStanceAction, ETriggerEvent::Started, this, &ABECharacter::OnFightingStanceTriggered);
 		}
+		if (JabAction)
+		{
+			EIC->BindAction(JabAction, ETriggerEvent::Started, this, &ABECharacter::OnJabStarted);
+		}
 	}
 }
 
 void ABECharacter::OnFightingStanceTriggered()
 {
 	CombatComponent->ToggleFightingStance();
+}
+
+void ABECharacter::OnJabStarted()
+{
+	CombatComponent->Jab();
 }

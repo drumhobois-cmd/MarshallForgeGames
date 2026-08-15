@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "BECombatComponent.h"
+#include "GameFramework/Character.h"
+#include "Animation/AnimInstance.h"
 
 UBECombatComponent::UBECombatComponent()
 {
@@ -35,4 +37,20 @@ void UBECombatComponent::ToggleFightingStance()
 bool UBECombatComponent::IsInFightingStance() const
 {
 	return bIsInFightingStance;
+}
+
+void UBECombatComponent::Jab()
+{
+	if (!JabMontage) return;
+
+	ACharacter* Character = Cast<ACharacter>(GetOwner());
+	if (!Character) return;
+
+	USkeletalMeshComponent* Mesh = Character->GetMesh();
+	if (!Mesh) return;
+
+	UAnimInstance* AnimInstance = Mesh->GetAnimInstance();
+	if (!AnimInstance) return;
+
+	AnimInstance->Montage_Play(JabMontage);
 }

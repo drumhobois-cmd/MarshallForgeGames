@@ -26,9 +26,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	TObjectPtr<UInputAction> FightingStanceAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> JabAction;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat")
 	TObjectPtr<UBECombatComponent> CombatComponent;
 
 private:
 	void OnFightingStanceTriggered();
+	void OnJabStarted();
 };
