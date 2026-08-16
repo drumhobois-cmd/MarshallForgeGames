@@ -2,8 +2,8 @@
 
 #include "BEAnimNotifyState_JabWindow.h"
 #include "BECharacter.h"
+#include "BECombatComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "DrawDebugHelpers.h"
 
 UBEAnimNotifyState_JabWindow::UBEAnimNotifyState_JabWindow()
 {
@@ -26,6 +26,12 @@ void UBEAnimNotifyState_JabWindow::NotifyBegin(USkeletalMeshComponent* MeshComp,
 	UE_LOG(LogTemp, Log, TEXT("  Owner: %s"), Owner ? *Owner->GetName() : TEXT("null"));
 	UE_LOG(LogTemp, Log, TEXT("  Casts to ABECharacter: %s"), Cast<ABECharacter>(Owner) ? TEXT("YES") : TEXT("NO"));
 	UE_LOG(LogTemp, Log, TEXT("  Socket '%s' exists: %s"), *FistSocketName.ToString(), MeshComp->DoesSocketExist(FistSocketName) ? TEXT("YES") : TEXT("NO"));
+
+	ABECharacter* Character = Cast<ABECharacter>(Owner);
+	if (Character)
+	{
+		Character->GetCombatComponent()->BeginFistSweep(MeshComp, FistSocketName);
+	}
 }
 
 void UBEAnimNotifyState_JabWindow::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
@@ -41,14 +47,20 @@ void UBEAnimNotifyState_JabWindow::NotifyTick(USkeletalMeshComponent* MeshComp, 
 	ABECharacter* Character = Cast<ABECharacter>(MeshComp->GetOwner());
 	if (!Character) return;
 
-	const FVector FistLocation = MeshComp->GetSocketLocation(FistSocketName);
-
-	DrawDebugSphere(MeshComp->GetWorld(), FistLocation, 6.0f, 8, FColor::Yellow, false, -1.0f);
+	Character->GetCombatComponent()->UpdateFistSweep(MeshComp, FistSocketName);
 }
 
 void UBEAnimNotifyState_JabWindow::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
 	UE_LOG(LogTemp, Log, TEXT("Jab Window END (ticked %d frames)"), TickLogCount);
+
+	if (!MeshComp) return;
+
+	ABECharacter* Character = Cast<ABECharacter>(MeshComp->GetOwner());
+	if (Character)
+	{
+		Character->GetCombatComponent()->EndFistSweep();
+	}
 }
 
 FString UBEAnimNotifyState_JabWindow::GetNotifyName_Implementation() const

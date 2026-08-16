@@ -7,6 +7,7 @@
 #include "BECombatComponent.generated.h"
 
 class UAnimMontage;
+class USkeletalMeshComponent;
 
 UCLASS(ClassGroup=(BruisedEgo), meta=(BlueprintSpawnableComponent))
 class BRUISEDEGOPROTOTYPE_API UBECombatComponent : public UActorComponent
@@ -34,7 +35,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Combat")
 	TObjectPtr<UAnimMontage> JabMontage;
 
+	// Fist sweep window — called by UBEAnimNotifyState_JabWindow
+	void BeginFistSweep(USkeletalMeshComponent* Mesh, FName SocketName);
+	void UpdateFistSweep(USkeletalMeshComponent* Mesh, FName SocketName);
+	void EndFistSweep();
+
 private:
 	UPROPERTY(VisibleAnywhere, Category="Combat")
 	bool bIsInFightingStance;
+
+	bool bFistSweepActive = false;
+	FVector PreviousFistLocation = FVector::ZeroVector;
+	bool bHitLoggedThisWindow = false;
 };

@@ -20,6 +20,8 @@ public:
 	UFUNCTION(BlueprintPure, Category="Combat")
 	bool IsInFightingStance() const;
 
+	UBECombatComponent* GetCombatComponent() const { return CombatComponent; }
+
 protected:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
