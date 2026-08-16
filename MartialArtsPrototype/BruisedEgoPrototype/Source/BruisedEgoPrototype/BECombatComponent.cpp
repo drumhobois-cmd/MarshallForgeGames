@@ -104,6 +104,18 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 			{
 				UE_LOG(LogTemp, Log, TEXT("Fist contact: %s"), *Hit.GetActor()->GetName());
 				bHitLoggedThisWindow = true;
+
+				ACharacter* Target = Cast<ACharacter>(Hit.GetActor());
+				if (Target)
+				{
+					// Shove direction: attacker -> target, horizontal only
+					const FVector ShoveDir = (Target->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal2D();
+					if (!ShoveDir.IsNearlyZero())
+					{
+						Target->LaunchCharacter(ShoveDir * 250.0f, true, false);
+					}
+				}
+
 				break;
 			}
 		}
