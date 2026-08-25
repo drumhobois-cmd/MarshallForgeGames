@@ -57,11 +57,17 @@ public:
 
 protected:
 	virtual void OnUnregister() override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
 	// Cancels any pending restore timer, restores Bob's physics/collision, and clears state.
 	// Only call during an active world; skip during teardown (bIsTearingDown) to avoid Invalid Bodies.
 	void ExecutePhysicsRestore();
+
+	// Disables the PostPhysics tick and resets all BE-0004 sampling fields.
+	// Safe to call any time the response ends (restore, re-hit cancel, unregister, teardown path excluded).
+	void ClearResponseSamplingState();
+
 	UPROPERTY(VisibleAnywhere, Category="Combat")
 	bool bIsInFightingStance;
 
@@ -79,4 +85,17 @@ private:
 	FTimerHandle PhysicsRestoreHandle;
 	FName ActiveRestoreChainRoot;
 	ECollisionEnabled::Type ActiveRestoreCollision = ECollisionEnabled::QueryOnly;
+
+	// BE-0004 response observability sampling state — active only during the named-body response window
+	bool bResponseSamplingActive = false;
+	TWeakObjectPtr<USkeletalMeshComponent> ResponseSamplingMesh;
+	FName ResponseSamplingBone;
+	uint32 ResponseSamplingWindowId = 0;
+	float ResponseSamplingStartTime = 0.0f;
+	int32 ResponseSampleOrdinal = 0;
+	float ResponseSamplingConfiguredDuration = 0.0f;
+	// World-space point captured at impact (fixed reference for per-tick velocity-at-point queries)
+	FVector ActiveResponseResolvedPoint = FVector::ZeroVector;
+	// Unit direction of the applied velocity request (for projection observables)
+	FVector ActiveResponseRequestedDir = FVector::ZeroVector;
 };

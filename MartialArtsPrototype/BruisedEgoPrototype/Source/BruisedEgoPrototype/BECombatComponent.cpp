@@ -11,7 +11,10 @@
 
 UBECombatComponent::UBECombatComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	// Tick is enabled only during an active named-body response (TG_PostPhysics) and disabled otherwise.
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
+	PrimaryComponentTick.TickGroup = TG_PostPhysics;
 	bIsInFightingStance = false;
 }
 
@@ -143,6 +146,9 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 						USkeletalMeshComponent* TargetSkel = Target->GetMesh();
 						FName ResolvedBone = NAME_None;
 						float ResolvedGeomDist = -1.0f;
+						// Captured from FClosestPointOnPhysicsAsset for use in the PreApply sample (ClosestResult is inner-scoped)
+						FVector ResolvedSurfacePoint = FVector::ZeroVector;
+						FVector ResolvedSurfaceNormal = FVector::ZeroVector;
 
 						if (TargetSkel)
 						{
@@ -173,6 +179,8 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 										{
 											ResolvedBone = ClosestResult.BoneName;
 											ResolvedGeomDist = GeomDist;
+											ResolvedSurfacePoint = ClosestResult.ClosestWorldPosition;
+											ResolvedSurfaceNormal = ClosestResult.Normal;
 										}
 									}
 								}
@@ -211,8 +219,94 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 
 							if (bPostBodyValid)
 							{
-								// Apply velocity change to the resolved body (bVelChange=true ignores mass)
 								const FVector AppliedVelocity = ShoveDir * UpperBodyResponseVelocity;
+
+								// --- BE_RESPONSE_SAMPLE_V1 PreApply ---
+								// Emitted after valid body re-acquisition and before the velocity request.
+								{
+									// Kinematic fist velocity estimate: (SweepEnd - SweepStart) / TickDelta
+									FString FistVelStr;
+									if (FMath::IsFinite(FrameDeltaTime) && FrameDeltaTime > 0.0f)
+									{
+										const FVector FistVelEst = (CurrentFistLocation - PreviousFistLocation) / FrameDeltaTime;
+										if (FistVelEst.ContainsNaN())
+											FistVelStr = TEXT("Unavailable (NaN)");
+										else
+											FistVelStr = FString::Printf(TEXT("(%.2f,%.2f,%.2f) cm/s (kinematic path-estimate; not strike velocity)"),
+												FistVelEst.X, FistVelEst.Y, FistVelEst.Z);
+									}
+									else
+									{
+										FistVelStr = FMath::IsFinite(FrameDeltaTime)
+											? FString::Printf(TEXT("Unavailable (non-positive delta: %.6f s)"), FrameDeltaTime)
+											: TEXT("Unavailable (non-finite delta)");
+									}
+
+									// Solver mass: raw single-body value; not chain or effective mass
+									const float SolverMassKg = PostRecreateBody->GetBodyMass();
+									const bool bMassUsable = FMath::IsFinite(SolverMassKg) && SolverMassKg > 0.0f;
+									const FString MassStr = bMassUsable
+										? FString::Printf(TEXT("%.4f kg (FBodyInstance::GetBodyMass; solver value, not chain/effective mass)"), SolverMassKg)
+										: FString::Printf(TEXT("Unavailable (non-positive: %.4f)"), SolverMassKg);
+
+									// Body state before velocity request
+									const FTransform BodyTransform = PostRecreateBody->GetUnrealWorldTransform();
+									const FVector BodyPos = BodyTransform.GetLocation();
+									const FQuat BodyRot = BodyTransform.GetRotation();
+									const FVector LinVel = PostRecreateBody->GetUnrealWorldVelocity();
+									const FVector AngVelRad = PostRecreateBody->GetUnrealWorldAngularVelocityInRadians();
+									// Velocity at the resolved PA surface point (world-space fixed reference)
+									const FVector PointVel = PostRecreateBody->GetUnrealWorldVelocityAtPoint(ResolvedSurfacePoint);
+
+									// Requested solver impulse equivalent: mass * |delta-v|; not a contact impulse
+									const FString ImpEquivStr = bMassUsable
+										? FString::Printf(TEXT("%.2f kg*cm/s (%.4f N*s) (requested solver impulse equiv; not contact impulse)"),
+											SolverMassKg * UpperBodyResponseVelocity,
+											(SolverMassKg * UpperBodyResponseVelocity) / 100.0f)
+										: TEXT("Unavailable (mass unavailable)");
+
+									UE_LOG(LogTemp, Log,
+										TEXT("BE_RESPONSE_SAMPLE_V1 | Phase=PreApply | WindowId=%u")
+										TEXT(" | FistVelEst=%s")
+										TEXT(" | PA_SurfacePoint=(%.2f,%.2f,%.2f) cm | PA_Normal=(%.4f,%.4f,%.4f) unitless | PA_Body=%s | PA_SurfaceDist=%.2f cm")
+										TEXT(" | SolverMass=%s")
+										TEXT(" | BodyPos=(%.2f,%.2f,%.2f) cm | BodyRot=(%.4f,%.4f,%.4f,%.4f)")
+										TEXT(" | LinVel=(%.2f,%.2f,%.2f) cm/s | AngVelRad=(%.4f,%.4f,%.4f) rad/s")
+										TEXT(" | PointVel=(%.2f,%.2f,%.2f) cm/s")
+										TEXT(" | RequestedDeltaV=(%.2f,%.2f,%.2f) cm/s | RequestedDir=(%.4f,%.4f,%.4f) unitless | bVelChange=true | ConfiguredDuration=%.4f s")
+										TEXT(" | RequestedSolverImpulseEquiv=%s"),
+										CurrentWindowId,
+										*FistVelStr,
+										ResolvedSurfacePoint.X, ResolvedSurfacePoint.Y, ResolvedSurfacePoint.Z,
+										ResolvedSurfaceNormal.X, ResolvedSurfaceNormal.Y, ResolvedSurfaceNormal.Z,
+										*ResolvedBone.ToString(), ResolvedGeomDist,
+										*MassStr,
+										BodyPos.X, BodyPos.Y, BodyPos.Z,
+										BodyRot.X, BodyRot.Y, BodyRot.Z, BodyRot.W,
+										LinVel.X, LinVel.Y, LinVel.Z,
+										AngVelRad.X, AngVelRad.Y, AngVelRad.Z,
+										PointVel.X, PointVel.Y, PointVel.Z,
+										AppliedVelocity.X, AppliedVelocity.Y, AppliedVelocity.Z,
+										ShoveDir.X, ShoveDir.Y, ShoveDir.Z,
+										UpperBodyReactionDurationSecs,
+										*ImpEquivStr
+									);
+
+									// Arm bounded TG_PostPhysics sampling for the duration of this response
+									ActiveResponseResolvedPoint = ResolvedSurfacePoint;
+									ActiveResponseRequestedDir = ShoveDir;
+									ResponseSamplingMesh = TargetSkel;
+									ResponseSamplingBone = ResolvedBone;
+									ResponseSamplingWindowId = CurrentWindowId;
+									ResponseSamplingStartTime = World->GetTimeSeconds();
+									ResponseSamplingConfiguredDuration = UpperBodyReactionDurationSecs;
+									ResponseSampleOrdinal = 0;
+									bResponseSamplingActive = true;
+									SetComponentTickEnabled(true);
+								}
+								// --- end BE_RESPONSE_SAMPLE_V1 PreApply ---
+
+								// Apply velocity change to the resolved body (bVelChange=true ignores mass)
 								PostRecreateBody->AddImpulse(AppliedVelocity, true);
 
 								// Record restore state
@@ -427,6 +521,86 @@ void UBECombatComponent::EndFistSweep()
 	HitFrameSkeletalCandidateHitCount = 0;
 }
 
+void UBECombatComponent::ClearResponseSamplingState()
+{
+	bResponseSamplingActive = false;
+	ResponseSamplingMesh.Reset();
+	ResponseSamplingBone = NAME_None;
+	ResponseSamplingWindowId = 0;
+	ResponseSamplingStartTime = 0.0f;
+	ResponseSampleOrdinal = 0;
+	ResponseSamplingConfiguredDuration = 0.0f;
+	ActiveResponseResolvedPoint = FVector::ZeroVector;
+	ActiveResponseRequestedDir = FVector::ZeroVector;
+	SetComponentTickEnabled(false);
+}
+
+void UBECombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (!bResponseSamplingActive) return;
+
+	UWorld* World = GetWorld();
+	if (!World) { ClearResponseSamplingState(); return; }
+
+	const float Elapsed = World->GetTimeSeconds() - ResponseSamplingStartTime;
+
+	// Safety net: stop sampling once elapsed time clearly exceeds the configured response window.
+	// Normal path: ExecutePhysicsRestore disables the tick before this guard triggers.
+	if (Elapsed > ResponseSamplingConfiguredDuration + 0.1f)
+	{
+		ClearResponseSamplingState();
+		return;
+	}
+
+	USkeletalMeshComponent* SkelMesh = ResponseSamplingMesh.Get();
+	if (!SkelMesh) { ClearResponseSamplingState(); return; }
+
+	FBodyInstance* Body = SkelMesh->GetBodyInstance(ResponseSamplingBone);
+	const bool bBodyValid = (Body != nullptr) && Body->IsValidBodyInstance();
+	// USkeletalMeshComponent::IsSimulatingPhysics uses the same module as the existing contact sample; avoids PhysicsCore dependency
+	const bool bBodySimulating = bBodyValid && SkelMesh->IsSimulatingPhysics(ResponseSamplingBone);
+
+	FVector BodyPos = FVector::ZeroVector;
+	FQuat BodyRot = FQuat::Identity;
+	FVector LinVel = FVector::ZeroVector;
+	FVector AngVelRad = FVector::ZeroVector;
+	FVector PointVel = FVector::ZeroVector;
+	float LinVelAlongResponseDir = 0.0f;
+
+	if (bBodyValid)
+	{
+		const FTransform BodyTransform = Body->GetUnrealWorldTransform();
+		BodyPos = BodyTransform.GetLocation();
+		BodyRot = BodyTransform.GetRotation();
+		LinVel = Body->GetUnrealWorldVelocity();
+		AngVelRad = Body->GetUnrealWorldAngularVelocityInRadians();
+		// ActiveResponseResolvedPoint is fixed at impact; consistent reference across all samples
+		PointVel = Body->GetUnrealWorldVelocityAtPoint(ActiveResponseResolvedPoint);
+		LinVelAlongResponseDir = FVector::DotProduct(LinVel, ActiveResponseRequestedDir);
+	}
+
+	UE_LOG(LogTemp, Log,
+		TEXT("BE_RESPONSE_SAMPLE_V1 | Phase=PostPhysics | WindowId=%u | Ordinal=%d | ElapsedSecs=%.4f s | ConfiguredDuration=%.4f s")
+		TEXT(" | BodyValid=%s | BodySimulating=%s")
+		TEXT(" | BodyPos=(%.2f,%.2f,%.2f) cm | BodyRot=(%.4f,%.4f,%.4f,%.4f)")
+		TEXT(" | LinVel=(%.2f,%.2f,%.2f) cm/s | AngVelRad=(%.4f,%.4f,%.4f) rad/s")
+		TEXT(" | PointVel=(%.2f,%.2f,%.2f) cm/s | LinVelAlongResponseDir=%.2f cm/s"),
+		ResponseSamplingWindowId, ResponseSampleOrdinal, Elapsed, ResponseSamplingConfiguredDuration,
+		bBodyValid ? TEXT("true") : TEXT("false"),
+		bBodySimulating ? TEXT("true") : TEXT("false"),
+		BodyPos.X, BodyPos.Y, BodyPos.Z,
+		BodyRot.X, BodyRot.Y, BodyRot.Z, BodyRot.W,
+		LinVel.X, LinVel.Y, LinVel.Z,
+		AngVelRad.X, AngVelRad.Y, AngVelRad.Z,
+		PointVel.X, PointVel.Y, PointVel.Z,
+		LinVelAlongResponseDir
+	);
+
+	++ResponseSampleOrdinal;
+}
+
 void UBECombatComponent::ExecutePhysicsRestore()
 {
 	if (UWorld* W = GetWorld())
@@ -441,6 +615,7 @@ void UBECombatComponent::ExecutePhysicsRestore()
 		PendingRestoreMesh->RecreatePhysicsState();
 	}
 	PendingRestoreMesh.Reset();
+	ClearResponseSamplingState();
 }
 
 void UBECombatComponent::OnUnregister()
@@ -457,6 +632,12 @@ void UBECombatComponent::OnUnregister()
 		if (W) { W->GetTimerManager().ClearTimer(PhysicsRestoreHandle); }
 		PhysicsRestoreHandle.Invalidate();
 		PendingRestoreMesh.Reset();
+		// Clear sampling fields directly; SetComponentTickEnabled is not safe during teardown
+		bResponseSamplingActive = false;
+		ResponseSamplingMesh.Reset();
+		ResponseSamplingBone = NAME_None;
+		ResponseSamplingWindowId = 0;
+		ResponseSampleOrdinal = 0;
 	}
 	Super::OnUnregister();
 }
