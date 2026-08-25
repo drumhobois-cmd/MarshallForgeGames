@@ -240,3 +240,20 @@ Windows 1 and 5 report `Result=MISS`, zero hit candidates, and `SampleCount=0`.
 As in the 30 FPS capture, their range/lateral identity is not recorded. The
 fallback, re-hit cancellation, active-response teardown at this cap, and
 post-teardown restart remain untested. Evidence remains **COMPILES**.
+
+## 30 FPS fallback evidence — passed
+
+Date: **2026-08-25**
+
+The supplied 30 FPS recording shows the live attacker's
+`UpperBodyChainRoot=NoEligibleChain` before the jab. Its visible Output Log
+records `Phase=Applied | WindowId=1 | Branch=CapsuleFallback |
+Reason=NoNamedBodyResolved | LaunchVelocity=250.0 cm/s`. The contact window is
+a hit, and no `BE_RESPONSE_SAMPLE_V1` record is shown for that window. This is
+the required no-eligible-chain fallback path; it does not alter hit geometry or
+the project default `spine_03` setting.
+
+No crash or `Invalid Bodies` warning is visible. The 60 FPS fallback, explicit
+range/lateral identity, active-response teardown at both caps, re-hit
+cancellation, post-teardown restart, no-save confirmation, and human
+acceptance remain outstanding. Evidence remains **COMPILES**.

@@ -19,5 +19,9 @@ linear velocity, angular velocity in rad/s, point velocity, and response-axis
 linear velocity are present. No `Invalid Bodies` warning or fatal error occurs
 in the supplied excerpts.
 
-Not yet captured: the no-eligible-body fallback, its existing 250 cm/s capsule
-shove, and proof that it emits no named-body response samples.
+**30 FPS fallback:** a recording of the live attacker with
+`UpperBodyChainRoot=NoEligibleChain` shows
+`Branch=CapsuleFallback | Reason=NoNamedBodyResolved | LaunchVelocity=250.0 cm/s`
+on a hit window. No `BE_RESPONSE_SAMPLE_V1` record is visible for that window.
+
+Still required: the equivalent 60 FPS fallback capture.
