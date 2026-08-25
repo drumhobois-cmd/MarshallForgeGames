@@ -346,3 +346,23 @@ This demonstrates that an active-response teardown does not prevent a clean
 named-body response in the next PIE world. It does not establish the separate
 no-asset-save criterion. Evidence remains **COMPILES** pending the other open
 matrix items and human acceptance.
+
+## 30/60 FPS labelled range and lateral misses — passed
+
+Date: **2026-08-25**
+
+The supplied recording establishes the manual geometry labels: at each cap,
+Window 1 is a range miss (attacker kept on the forward axis but out of reach)
+and Window 2 is a lateral miss (attacker shifted sideways from the target's
+strike path). The matching raw logs record the 60 FPS world at maximum tick
+rate 60 and the 30 FPS world at maximum tick rate 30. At both caps, Windows 1
+and 2 each report `Result=MISS`, `SampleCount=0`, zero hit-frame candidates,
+and no named-body `PreApply` or `Applied` response. Windows 3–5 are normal
+control hits, which do not alter the miss result.
+
+No crash or `Invalid Bodies` warning is present in the supplied logs. The
+recording shows an existing `2 Unsaved` Editor indicator, and the raw excerpts
+do not separately establish the absence of content-package saves. The
+no-asset-save criterion therefore remains **UNKNOWN**. Evidence remains
+**COMPILES** pending that confirmation, the separately unreachable manual
+re-hit case, and human acceptance.

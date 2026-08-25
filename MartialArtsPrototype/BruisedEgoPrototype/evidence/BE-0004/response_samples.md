@@ -37,3 +37,8 @@ for a response interrupted before its 0.40 s expiry.
 simulating post-physics samples through `0.2000 s`, then PIE teardown begins.
 No restoration, fatal error, or `Invalid Bodies` warning is present, as expected
 for a response interrupted before its 0.40 s expiry.
+
+**Labelled misses at both caps:** Window 1 is the recorded range miss and
+Window 2 the recorded lateral miss. At 60 FPS (`max tick rate 60`) and 30 FPS
+(`max tick rate 30`), both windows report `Result=MISS`, zero candidates, and
+`SampleCount=0`; neither emits a named-body response sample.

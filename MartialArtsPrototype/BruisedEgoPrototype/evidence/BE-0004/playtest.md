@@ -7,7 +7,7 @@ Date: **2026-08-25**
 | --- | --- | --- | --- |
 | Explicit frame cap | Recording shows `t.MaxFPS = "30"` | Recording shows `t.MaxFPS = "60"` | Observed |
 | Three eligible torso hits | Three complete named-body responses | Three complete named-body responses | Observed |
-| Range and lateral miss | Two zero-candidate misses; geometry labels absent | Two zero-candidate misses; geometry labels absent | Partial |
+| Range and lateral miss | Window 1 range and Window 2 lateral: zero-candidate misses, no response samples | Window 1 range and Window 2 lateral: zero-candidate misses, no response samples | Observed |
 | No-eligible-body fallback | Runtime `NoEligibleChain`: 250 cm/s capsule fallback; no response sample shown | Same fallback at `TickDelta=0.016667 s`; no response sample shown | Observed |
 | Stop PIE during active response | Named response stopped at `0.2000 s`; no restore/crash/`Invalid Bodies` | Named response stopped at `0.1667 s`; no restore/crash/`Invalid Bodies` | Observed |
 | Restart after active teardown, then normal hit | Not captured | Fresh 60 FPS PIE world: named-body response completes with one `Restored`; no crash/`Invalid Bodies` visible | Observed at 60 |
