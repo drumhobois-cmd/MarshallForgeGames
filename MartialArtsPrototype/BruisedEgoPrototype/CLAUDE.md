@@ -1,10 +1,12 @@
-﻿# Bruised Ego Prototype
+@AGENTS.md
+
+# Bruised Ego Prototype
 
 ## Project
 
 Working title: Bruised Ego
 
-Engine: Unreal Engine 5.8
+Engine: Unreal Engine 5.8.1
 Language: C++ with Blueprint used for presentation/editor-facing work.
 
 This is an early prototype for a grounded martial arts RPG.
@@ -17,9 +19,9 @@ The current goal is simply:
 
 ---
 
-## Current Prototype Scope
+## Target Prototype Scope
 
-The prototype currently consists of:
+The target slice includes:
 
 - One small test gym / grey-box room
 - One player character
@@ -235,3 +237,14 @@ Do not create a project that can only be understood by reading generated code.
 8. Evaluate feel before adding anything else.
 
 Bob gets punched first.
+
+---
+
+## Claude Code Assignment
+
+- Claude is the default C++ implementation agent for this repository.
+- Before editing, read the active task and inspect the relevant live files; do not implement from chat excerpts when repository files are available.
+- Stay inside the active task's allowed files and non-goals. Propose broader work as a separate follow-up task.
+- Plan first when a change crosses systems, touches serialized Blueprint-facing fields, changes modules/plugins, or depends on experimental Unreal APIs.
+- Do not edit Unreal binary assets. Provide exact, numbered Editor steps for the human instead.
+- Finish with the handoff required by `AGENTS.md`, including a patch summary suitable for Codex review.
