@@ -275,3 +275,21 @@ project default `spine_03` setting. No crash or `Invalid Bodies` warning is
 visible. Re-hit cancellation, active-response teardown at both caps,
 post-teardown restart, explicit range/lateral identity, no-save confirmation,
 and human acceptance remain outstanding. Evidence remains **COMPILES**.
+
+## 60 FPS active-response teardown — passed
+
+Date: **2026-08-25**
+
+The supplied 60 FPS log enters the normal `Branch=NamedBody` response with
+`ChainRoot=spine_03` and `TickDelta=0.016667 s`. It records 11 valid,
+simulating post-physics samples (ordinal 0–10) through `ElapsedSecs=0.1667 s`,
+then `BeginTearingDown` and `CleanupWorld`. There is no `Phase=Restored`, as
+expected because PIE stopped inside the configured 0.40 s response, and no
+fatal error or `Invalid Bodies` warning occurs.
+
+The recording also visibly confirms `t.MaxFPS = "60"`. It contains editor
+auto-save messages outside this response excerpt, so this does not establish
+the separate no-asset-save criterion. Still required: the equivalent 30 FPS
+active-response teardown, re-hit cancellation, post-teardown restart/clean
+hit, explicit range/lateral identity, no-save confirmation, and human
+acceptance. Evidence remains **COMPILES**.

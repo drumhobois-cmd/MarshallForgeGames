@@ -27,3 +27,8 @@ on a hit window. No `BE_RESPONSE_SAMPLE_V1` record is visible for that window.
 **60 FPS fallback:** the equivalent runtime override records the same fallback
 line on a hit window with `TickDelta=0.016667 s`; no
 `BE_RESPONSE_SAMPLE_V1` record is visible for that window.
+
+**60 FPS active teardown:** normal named-body window 1 records 11 valid,
+simulating post-physics samples through `0.1667 s`, then PIE teardown begins.
+No restoration, fatal error, or `Invalid Bodies` warning is present, as expected
+for a response interrupted before its 0.40 s expiry.
