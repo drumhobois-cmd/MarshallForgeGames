@@ -330,3 +330,19 @@ timer-cancellation implementation is wrong. Re-hit cancellation remains
 unverified; do not alter assets to force it. If a second named hit cannot be
 generated before the first restoration, record that constraint and decide a
 separately scoped, source-level test hook with the human owner.
+
+## 60 FPS restart after active teardown, then clean hit — passed
+
+Date: **2026-08-25**
+
+The supplied recording first returns to the Editor following an active-response
+world teardown. It then starts a fresh PIE world, visibly reports a maximum
+tick rate of 60, and performs a new normal hit. The fresh session's Output Log
+shows its new jab/contact sequence, bounded response samples through the
+configured `0.4000 s` window, and one `BE_UPPER_BODY_RESPONSE_V1 |
+Phase=Restored | WindowId=1`. No crash or `Invalid Bodies` warning is visible.
+
+This demonstrates that an active-response teardown does not prevent a clean
+named-body response in the next PIE world. It does not establish the separate
+no-asset-save criterion. Evidence remains **COMPILES** pending the other open
+matrix items and human acceptance.

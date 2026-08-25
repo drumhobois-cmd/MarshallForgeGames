@@ -10,7 +10,7 @@ Date: **2026-08-25**
 | Range and lateral miss | Two zero-candidate misses; geometry labels absent | Two zero-candidate misses; geometry labels absent | Partial |
 | No-eligible-body fallback | Runtime `NoEligibleChain`: 250 cm/s capsule fallback; no response sample shown | Same fallback at `TickDelta=0.016667 s`; no response sample shown | Observed |
 | Stop PIE during active response | Named response stopped at `0.2000 s`; no restore/crash/`Invalid Bodies` | Named response stopped at `0.1667 s`; no restore/crash/`Invalid Bodies` | Observed |
-| Restart after active teardown, then normal hit | Not captured | Not captured | NOT RUN |
+| Restart after active teardown, then normal hit | Not captured | Fresh 60 FPS PIE world: named-body response completes with one `Restored`; no crash/`Invalid Bodies` visible | Observed at 60 |
 | Re-hit within 0.40 s | Not captured | Rapid double-click produced Window 2 only after Window 1 restored; cancellation was not exercised | Partial / unverified |
 | No asset saves | Not recorded | Not recorded | UNKNOWN |
 
