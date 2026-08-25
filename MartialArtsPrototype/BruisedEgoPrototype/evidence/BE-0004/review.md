@@ -220,3 +220,23 @@ cm/s capsule shove and no named-body response samples; a re-hit inside 0.40 s;
 the equivalent explicit 60 FPS matrix; restart and clean hit after active
 teardown; no-asset-save confirmation; and final human acceptance. Evidence
 remains **COMPILES**.
+
+## 60 FPS PIE evidence — partial matrix pass
+
+Date: **2026-08-25**
+
+The supplied recording visibly shows `Cmd: t.MaxFPS 60` and
+`t.MaxFPS = "60"`. Its matching PIE log uses `TickDelta=0.016667 s` and
+0.0167-second post-physics intervals. The recording itself is encoded at 30
+fps, which is not treated as game-frame-rate evidence.
+
+Named-body windows 2–4 each emit one finite `PreApply`, one `Applied`, 25
+bounded `PostPhysics` samples through `ElapsedSecs=0.4000 s`, and exactly one
+`Restored`. The sampled body is valid/simulating and `spine_05`; the fixed
+request remains approximately 200 cm/s with `bVelChange=true` and a 0.40 s
+duration. There is no crash or `Invalid Bodies` warning in the supplied log.
+
+Windows 1 and 5 report `Result=MISS`, zero hit candidates, and `SampleCount=0`.
+As in the 30 FPS capture, their range/lateral identity is not recorded. The
+fallback, re-hit cancellation, active-response teardown at this cap, and
+post-teardown restart remain untested. Evidence remains **COMPILES**.
