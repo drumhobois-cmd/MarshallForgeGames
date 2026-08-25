@@ -1,7 +1,7 @@
 # Bruised Ego — current implementation state
 
 Baseline date: **2026-08-25**  
-Active task: **None — BE-0002 and BE-0003 are completed and archived**  
+Active task: **BE-0004 — READY: measure named-body response observability**  
 Highest current evidence: **PLAYTEST-VERIFIED** for the BE-0003 named-body upper-body reaction, fallback, restoration/teardown, and 30/60 FPS matrix.
 
 This file records only facts checked against the live project. Verification maturity uses the canonical labels in `AGENTS.md`. Provenance—live source, serialized asset reference, Editor log, or user playtest—is stated separately.

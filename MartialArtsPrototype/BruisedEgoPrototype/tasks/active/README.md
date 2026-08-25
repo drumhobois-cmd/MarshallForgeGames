@@ -12,4 +12,4 @@ Rules:
 
 The initial documentation-only task, `BE-0001_REBASELINE_PROJECT.md`, was accepted on 2026-08-19 and is archived under `../completed/`.
 
-Current task: `BE-0002_INSTRUMENT_JAB_CONTACT.md`.
+Current task: `BE-0004_MEASURE_RESPONSE_OBSERVABILITY.md`.
