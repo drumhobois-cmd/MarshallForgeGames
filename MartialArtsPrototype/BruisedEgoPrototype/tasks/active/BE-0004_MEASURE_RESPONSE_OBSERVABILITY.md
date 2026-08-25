@@ -1,6 +1,6 @@
 # BE-0004 — measure named-body response observability
 
-Status: `IN PROGRESS — P2 REVIEW CORRECTIONS REQUESTED`  
+Status: `HUMAN VERIFICATION — PIE MATRIX AUTHORIZED`  
 Owner: `Claude`  
 Reviewer: `Codex`  
 Final acceptance: `Human`  
@@ -191,8 +191,7 @@ At both `t.MaxFPS 30` and `t.MaxFPS 60`:
 
 ## Review findings
 
-Independent Sol review found three P2 blockers before PIE: invalid-body samples
-log zero-valued physical measurements instead of explicit unavailable values;
-the sampled Physics Asset point is fixed in world space rather than attached
-to the responding body; and teardown leaves part of the sampling state stale.
-See `evidence/BE-0004/review.md`. Claude must correct and rebuild before PIE.
+Independent Sol review initially found three P2 blockers. Commit `6f5ffbb`
+corrected them, rebuilt successfully, and passed final Sol re-review. PIE is
+authorized; see `evidence/BE-0004/review.md`. `TG_PostPhysics` runs before
+TimerManager, so an expiry-frame post-physics sample may precede restoration.

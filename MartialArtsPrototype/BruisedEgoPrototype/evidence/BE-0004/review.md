@@ -2,7 +2,8 @@
 
 Date: **2026-08-25**  
 Reviewer: **Codex, with required Sol physics/lifecycle gate**  
-Current evidence: **COMPILES** only. **Do not begin PIE verification yet.**
+Current evidence: **COMPILES**. The corrected source passed final Sol
+re-review; PIE verification is authorized.
 
 ## Build evidence reviewed
 
@@ -13,7 +14,7 @@ only recorded warning is the pre-existing `IncludeOrderVersion = Unreal5_6`
 upgrade notice. Add a retained raw UnrealBuildTool-log pointer before complete
 build evidence is claimed.
 
-## Blocking findings
+## Initial blocking findings
 
 ### BE-0004-R1 [P2] — invalid body samples fabricate zero-valued measurements
 
@@ -69,3 +70,36 @@ without calling `SetComponentTickEnabled` during world teardown.
    engine, result, and warnings.
 4. Send the source diff and evidence to Codex. PIE may begin only after review
    passes.
+
+## R1–R3 correction re-review — passed
+
+Date: **2026-08-25**  
+Reviewed commit: `6f5ffbb` — `fix(combat): apply BE-0004 R1-R3 review corrections`
+
+All three P2 findings are resolved:
+
+- **R1:** Every invalid-body physical field and the direction projection now
+  emits `Unavailable (invalid body instance)`, rather than a plausible numeric
+  zero, while validity booleans remain visible.
+- **R2:** The resolved Physics Asset surface point is transformed into local
+  body coordinates at PreApply, transformed back to the current world position
+  in each post-physics sample, logged, and passed as the required world-space
+  point to `GetUnrealWorldVelocityAtPoint`.
+- **R3:** Normal restoration and the direct teardown path reset every BE-0004
+  sampling field. Teardown does not call tick enable/disable.
+
+The raw UBT log at
+`C:\Users\samma\AppData\Local\UnrealBuildTool\Log.txt` confirms the UE
+5.8.1 Editor Development rebuild: seven actions, `Result: Succeeded`, total
+execution time 21.37 seconds. The built source hashes match the canonical
+tracked source.
+
+**PIE matrix authorized.** Evidence remains **COMPILES** until the named-body,
+miss, fallback, and active-response teardown cases pass at 30 and 60 FPS.
+
+### Non-blocking timing clarification
+
+UE 5.8.1 executes `TG_PostPhysics` before TimerManager. An expiry-frame
+post-physics sample can therefore appear before that frame's restoration. This
+is expected bounded behaviour; record it during PIE rather than requiring its
+absence.
