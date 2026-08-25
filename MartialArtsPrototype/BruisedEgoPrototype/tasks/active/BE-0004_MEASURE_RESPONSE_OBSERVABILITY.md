@@ -1,6 +1,6 @@
 # BE-0004 — measure named-body response observability
 
-Status: `HUMAN VERIFICATION — PIE MATRIX REAUTHORIZED AFTER CRASH FIX`
+Status: `HUMAN VERIFICATION — PIE MATRIX PARTIAL`
 Owner: `Claude`  
 Reviewer: `Codex`  
 Final acceptance: `Human`  
@@ -200,3 +200,12 @@ compiled successfully, and passed independent Sol lifecycle review. The PIE
 matrix is reauthorized and must restart from the first normal-expiry case.
 `TG_PostPhysics` runs before TimerManager, so an expiry-frame post-physics
 sample may precede restoration.
+
+## Partial PIE evidence
+
+Two supplied PIE log captures confirm one normal named-body expiry reaches one
+`Phase=Restored` without the former crash, and an active-response PIE stop
+reaches world teardown without a visible `Invalid Bodies` warning. They do not
+record `t.MaxFPS`, a re-hit, misses, fallback, a post-teardown restart, or the
+full 30/60 FPS matrix. See `evidence/BE-0004/review.md`; evidence remains
+`COMPILES` until those cases pass.

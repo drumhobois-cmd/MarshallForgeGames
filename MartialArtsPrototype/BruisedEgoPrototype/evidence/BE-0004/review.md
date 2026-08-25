@@ -164,3 +164,35 @@ Non-blocking documentation precision: the previous comment describes
 `ClearTimer` as crashing TimerManager. UE supports clearing an executing timer;
 the actual defect was the callback's subsequent use of its destroyed captured
 closure.
+
+## Partial PIE log review — matrix remains open
+
+Date: **2026-08-25**
+
+Two human-supplied PIE log captures were independently reviewed. They are
+partial evidence only; no source or asset change was made for this review.
+
+**Observed normal expiry:** one named-body `spine_05` response emitted one
+finite `PreApply`, `Applied`, 49 finite `PostPhysics` samples (ordinal 0–48),
+and exactly one `Restored`. Elapsed time increases from approximately zero to
+`0.4044 s`; body validity/simulation, tracked body-local surface point, and
+unit-labelled fields are present. The request remains approximately `200 cm/s`
+with `bVelChange=true` and `ConfiguredDuration=0.4000 s`. No fatal error or
+`Invalid Bodies` warning occurs in the supplied excerpt. This traverses the
+former crash callback successfully for one response.
+
+**Observed active-response teardown:** a second named-body response emitted 15
+post-physics samples through `ElapsedSecs=0.1167 s`, then
+`BeginTearingDown` and `CleanupWorld`. No fatal error or `Invalid Bodies`
+warning occurs in the supplied excerpt. This does not directly demonstrate
+internal state clearing or a successful subsequent PIE restart.
+
+**Not evidenced:** explicit `t.MaxFPS 30` and `t.MaxFPS 60` runs (the observed
+roughly 0.00833 s cadence is insufficient); re-hit replacement inside 0.40 s;
+three named-body hits at each cap; range and lateral misses; no-eligible-body
+fallback and its existing 250 cm/s shove with no named-body samples; restart
+after teardown; no asset save; or final human acceptance.
+
+Evidence remains **COMPILES**, not `PLAYTEST-VERIFIED`. The next manual pass
+must record the FPS command/value, run the missing cases, and confirm no crash,
+`Invalid Bodies`, late prior-window restoration, or post-restoration samples.
