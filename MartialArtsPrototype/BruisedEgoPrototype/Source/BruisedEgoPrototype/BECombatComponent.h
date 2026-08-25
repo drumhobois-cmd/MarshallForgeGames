@@ -94,8 +94,11 @@ private:
 	float ResponseSamplingStartTime = 0.0f;
 	int32 ResponseSampleOrdinal = 0;
 	float ResponseSamplingConfiguredDuration = 0.0f;
-	// World-space point captured at impact (fixed reference for per-tick velocity-at-point queries)
+	// World-space point captured at impact (for PreApply log; not used for PostPhysics queries)
 	FVector ActiveResponseResolvedPoint = FVector::ZeroVector;
+	// Body-local coordinates of the resolved PA surface point, captured at PreApply.
+	// Re-derived to world space each PostPhysics tick via the current body transform (R2).
+	FVector ActiveResponseLocalPoint = FVector::ZeroVector;
 	// Unit direction of the applied velocity request (for projection observables)
 	FVector ActiveResponseRequestedDir = FVector::ZeroVector;
 };

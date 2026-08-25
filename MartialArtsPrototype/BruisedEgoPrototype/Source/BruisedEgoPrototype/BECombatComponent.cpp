@@ -255,7 +255,7 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 									const FQuat BodyRot = BodyTransform.GetRotation();
 									const FVector LinVel = PostRecreateBody->GetUnrealWorldVelocity();
 									const FVector AngVelRad = PostRecreateBody->GetUnrealWorldAngularVelocityInRadians();
-									// Velocity at the resolved PA surface point (world-space fixed reference)
+									// Velocity at the resolved PA surface point (world-space, body is at rest pre-apply; stored as body-local for PostPhysics tracking)
 									const FVector PointVel = PostRecreateBody->GetUnrealWorldVelocityAtPoint(ResolvedSurfacePoint);
 
 									// Requested solver impulse equivalent: mass * |delta-v|; not a contact impulse
@@ -268,7 +268,7 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 									UE_LOG(LogTemp, Log,
 										TEXT("BE_RESPONSE_SAMPLE_V1 | Phase=PreApply | WindowId=%u")
 										TEXT(" | FistVelEst=%s")
-										TEXT(" | PA_SurfacePoint=(%.2f,%.2f,%.2f) cm | PA_Normal=(%.4f,%.4f,%.4f) unitless | PA_Body=%s | PA_SurfaceDist=%.2f cm")
+										TEXT(" | PA_SurfacePoint=(%.2f,%.2f,%.2f) cm | PA_Normal=(%.4f,%.4f,%.4f) unitless | PA_Body=%s | PA_SurfaceDist=%.2f cm | PA_SurfacePointTracking=body-local-derived")
 										TEXT(" | SolverMass=%s")
 										TEXT(" | BodyPos=(%.2f,%.2f,%.2f) cm | BodyRot=(%.4f,%.4f,%.4f,%.4f)")
 										TEXT(" | LinVel=(%.2f,%.2f,%.2f) cm/s | AngVelRad=(%.4f,%.4f,%.4f) rad/s")
@@ -294,6 +294,8 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 
 									// Arm bounded TG_PostPhysics sampling for the duration of this response
 									ActiveResponseResolvedPoint = ResolvedSurfacePoint;
+									// R2: convert surface point to body-local space so PostPhysics ticks can track the material point
+									ActiveResponseLocalPoint = BodyTransform.InverseTransformPosition(ResolvedSurfacePoint);
 									ActiveResponseRequestedDir = ShoveDir;
 									ResponseSamplingMesh = TargetSkel;
 									ResponseSamplingBone = ResolvedBone;
@@ -531,6 +533,7 @@ void UBECombatComponent::ClearResponseSamplingState()
 	ResponseSampleOrdinal = 0;
 	ResponseSamplingConfiguredDuration = 0.0f;
 	ActiveResponseResolvedPoint = FVector::ZeroVector;
+	ActiveResponseLocalPoint = FVector::ZeroVector;
 	ActiveResponseRequestedDir = FVector::ZeroVector;
 	SetComponentTickEnabled(false);
 }
@@ -562,40 +565,47 @@ void UBECombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 	// USkeletalMeshComponent::IsSimulatingPhysics uses the same module as the existing contact sample; avoids PhysicsCore dependency
 	const bool bBodySimulating = bBodyValid && SkelMesh->IsSimulatingPhysics(ResponseSamplingBone);
 
-	FVector BodyPos = FVector::ZeroVector;
-	FQuat BodyRot = FQuat::Identity;
-	FVector LinVel = FVector::ZeroVector;
-	FVector AngVelRad = FVector::ZeroVector;
-	FVector PointVel = FVector::ZeroVector;
-	float LinVelAlongResponseDir = 0.0f;
-
+	// R1: use explicit unavailable strings when body is invalid; zero is plausible data, not an absence marker.
+	// R2: re-derive the tracked surface point from body-local coordinates each sample so it follows the body.
+	FString BodyPosStr, BodyRotStr, LinVelStr, AngVelStr, TrackedPtStr, PointVelStr, DirProjStr;
 	if (bBodyValid)
 	{
 		const FTransform BodyTransform = Body->GetUnrealWorldTransform();
-		BodyPos = BodyTransform.GetLocation();
-		BodyRot = BodyTransform.GetRotation();
-		LinVel = Body->GetUnrealWorldVelocity();
-		AngVelRad = Body->GetUnrealWorldAngularVelocityInRadians();
-		// ActiveResponseResolvedPoint is fixed at impact; consistent reference across all samples
-		PointVel = Body->GetUnrealWorldVelocityAtPoint(ActiveResponseResolvedPoint);
-		LinVelAlongResponseDir = FVector::DotProduct(LinVel, ActiveResponseRequestedDir);
+		const FVector BodyPos = BodyTransform.GetLocation();
+		const FQuat BodyRot = BodyTransform.GetRotation();
+		const FVector LinVel = Body->GetUnrealWorldVelocity();
+		const FVector AngVelRad = Body->GetUnrealWorldAngularVelocityInRadians();
+		// Re-derive the tracked surface point in world space from body-local coordinates captured at PreApply
+		const FVector TrackedWorldPoint = BodyTransform.TransformPosition(ActiveResponseLocalPoint);
+		const FVector PointVel = Body->GetUnrealWorldVelocityAtPoint(TrackedWorldPoint);
+		const float DirProj = FVector::DotProduct(LinVel, ActiveResponseRequestedDir);
+
+		BodyPosStr   = FString::Printf(TEXT("(%.2f,%.2f,%.2f) cm"), BodyPos.X, BodyPos.Y, BodyPos.Z);
+		BodyRotStr   = FString::Printf(TEXT("(%.4f,%.4f,%.4f,%.4f)"), BodyRot.X, BodyRot.Y, BodyRot.Z, BodyRot.W);
+		LinVelStr    = FString::Printf(TEXT("(%.2f,%.2f,%.2f) cm/s"), LinVel.X, LinVel.Y, LinVel.Z);
+		AngVelStr    = FString::Printf(TEXT("(%.4f,%.4f,%.4f) rad/s"), AngVelRad.X, AngVelRad.Y, AngVelRad.Z);
+		TrackedPtStr = FString::Printf(TEXT("(%.2f,%.2f,%.2f) cm"), TrackedWorldPoint.X, TrackedWorldPoint.Y, TrackedWorldPoint.Z);
+		PointVelStr  = FString::Printf(TEXT("(%.2f,%.2f,%.2f) cm/s"), PointVel.X, PointVel.Y, PointVel.Z);
+		DirProjStr   = FString::Printf(TEXT("%.2f cm/s"), DirProj);
+	}
+	else
+	{
+		const FString U(TEXT("Unavailable (invalid body instance)"));
+		BodyPosStr = BodyRotStr = LinVelStr = AngVelStr = TrackedPtStr = PointVelStr = DirProjStr = U;
 	}
 
 	UE_LOG(LogTemp, Log,
 		TEXT("BE_RESPONSE_SAMPLE_V1 | Phase=PostPhysics | WindowId=%u | Ordinal=%d | ElapsedSecs=%.4f s | ConfiguredDuration=%.4f s")
 		TEXT(" | BodyValid=%s | BodySimulating=%s")
-		TEXT(" | BodyPos=(%.2f,%.2f,%.2f) cm | BodyRot=(%.4f,%.4f,%.4f,%.4f)")
-		TEXT(" | LinVel=(%.2f,%.2f,%.2f) cm/s | AngVelRad=(%.4f,%.4f,%.4f) rad/s")
-		TEXT(" | PointVel=(%.2f,%.2f,%.2f) cm/s | LinVelAlongResponseDir=%.2f cm/s"),
+		TEXT(" | BodyPos=%s | BodyRot=%s")
+		TEXT(" | LinVel=%s | AngVelRad=%s")
+		TEXT(" | TrackedSurfacePoint=%s | PointVel=%s | LinVelAlongResponseDir=%s"),
 		ResponseSamplingWindowId, ResponseSampleOrdinal, Elapsed, ResponseSamplingConfiguredDuration,
 		bBodyValid ? TEXT("true") : TEXT("false"),
 		bBodySimulating ? TEXT("true") : TEXT("false"),
-		BodyPos.X, BodyPos.Y, BodyPos.Z,
-		BodyRot.X, BodyRot.Y, BodyRot.Z, BodyRot.W,
-		LinVel.X, LinVel.Y, LinVel.Z,
-		AngVelRad.X, AngVelRad.Y, AngVelRad.Z,
-		PointVel.X, PointVel.Y, PointVel.Z,
-		LinVelAlongResponseDir
+		*BodyPosStr, *BodyRotStr,
+		*LinVelStr, *AngVelStr,
+		*TrackedPtStr, *PointVelStr, *DirProjStr
 	);
 
 	++ResponseSampleOrdinal;
@@ -632,12 +642,17 @@ void UBECombatComponent::OnUnregister()
 		if (W) { W->GetTimerManager().ClearTimer(PhysicsRestoreHandle); }
 		PhysicsRestoreHandle.Invalidate();
 		PendingRestoreMesh.Reset();
-		// Clear sampling fields directly; SetComponentTickEnabled is not safe during teardown
+		// Clear all sampling fields directly; SetComponentTickEnabled is not safe during teardown (R3)
 		bResponseSamplingActive = false;
 		ResponseSamplingMesh.Reset();
 		ResponseSamplingBone = NAME_None;
 		ResponseSamplingWindowId = 0;
+		ResponseSamplingStartTime = 0.0f;
 		ResponseSampleOrdinal = 0;
+		ResponseSamplingConfiguredDuration = 0.0f;
+		ActiveResponseResolvedPoint = FVector::ZeroVector;
+		ActiveResponseLocalPoint = FVector::ZeroVector;
+		ActiveResponseRequestedDir = FVector::ZeroVector;
 	}
 	Super::OnUnregister();
 }
