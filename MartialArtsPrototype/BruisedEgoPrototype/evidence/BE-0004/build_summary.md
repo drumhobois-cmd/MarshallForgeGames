@@ -70,6 +70,27 @@ Total execution time: 21.37 seconds
 
 This `[Upgrade]` notice was present before BE-0004 and is not introduced by this task.
 
+## Crash-fix rebuild (commit `a5c2854`)
+
+**Succeeded** — exit code 0. The exact command, target, engine, and raw-log
+pointer above apply to this rebuild.
+
+```
+[1/7] Compile [x64] BEAnimNotifyState_JabWindow.cpp
+[2/7] Compile [x64] Module.BruisedEgoPrototype.gen.cpp
+[3/7] Compile [x64] BECharacter.cpp
+[4/7] Compile [x64] BECombatComponent.cpp
+[5/7] Link [x64] UnrealEditor-BruisedEgoPrototype.lib
+[6/7] Link [x64] UnrealEditor-BruisedEgoPrototype.dll
+[7/7] WriteMetadata BruisedEgoPrototypeEditor.target [NoUba]
+
+Result: Succeeded
+Total execution time: 20.09 seconds
+```
+
+No new warnings. The sole `[Upgrade]` IncludeOrderVersion notice above is
+pre-existing.
+
 ## Intermediate build errors during initial implementation (resolved before first build)
 
 1. `error C2065: 'ClosestResult': undeclared identifier` — `FClosestPointOnPhysicsAsset ClosestResult` is declared inside `if (TargetSkel)`. The PreApply block lives in the outer `if (bPostBodyValid)` scope. Fixed by capturing `ClosestResult.ClosestWorldPosition` and `ClosestResult.Normal` into `ResolvedSurfacePoint` and `ResolvedSurfaceNormal` at the same scope as `ResolvedBone`.

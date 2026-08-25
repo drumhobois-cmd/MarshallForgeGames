@@ -135,3 +135,32 @@ then test one normal expiry and `Phase=Restored` log, a re-hit inside 0.40 s,
 Confirm no crash, no `Invalid Bodies` warning, and exactly one restoration per
 response. The evidence label remains **COMPILES**; PIE acceptance failed and
 must restart after the repair.
+
+## Crash-fix re-review — passed
+
+Date: **2026-08-25**
+Reviewed commit: `a5c2854` — `fix(combat): guard ClearTimer against executing restore timer`
+
+The explicit `ExecutePhysicsRestore(bool bCancelRestoreTimer)` contract passes
+independent Sol lifecycle review. The expiry lambda passes `false`, leaving its
+executing `FTimerData` and captured closure alive until its later log reads
+complete; UE then naturally removes the non-looping timer after the callback
+returns. Re-hit and active-world unregister pass `true`, preserving pending
+timer cancellation. Both paths invalidate the component handle and restore and
+clear response state; teardown remains direct non-physics cleanup.
+
+The exact UE 5.8.1 Editor Development rebuild recorded in
+`build_summary.md` succeeded in 20.09 seconds, compiling
+`BECombatComponent.cpp`; no new warnings were reported. Canonical and live
+5.8-workspace combat-source hashes match.
+
+**PIE matrix reauthorized.** Evidence remains **COMPILES** pending the complete
+manual matrix. Begin with one normal expiry, then re-hit replacement, the 30/60
+FPS named-body/miss/fallback cases, and active-response PIE teardown. Require
+one `Phase=Restored` per completed replacement response, no post-restoration
+samples, no crash, and no `Invalid Bodies` warning. Do not save assets.
+
+Non-blocking documentation precision: the previous comment describes
+`ClearTimer` as crashing TimerManager. UE supports clearing an executing timer;
+the actual defect was the callback's subsequent use of its destroyed captured
+closure.
