@@ -196,3 +196,27 @@ after teardown; no asset save; or final human acceptance.
 Evidence remains **COMPILES**, not `PLAYTEST-VERIFIED`. The next manual pass
 must record the FPS command/value, run the missing cases, and confirm no crash,
 `Invalid Bodies`, late prior-window restoration, or post-restoration samples.
+
+## 30 FPS PIE evidence — partial matrix pass
+
+Date: **2026-08-25**
+
+The supplied 19.63-second screen recording visibly shows `Cmd: t.MaxFPS 30`
+and `t.MaxFPS = "30"`. Its matching PIE log uses `TickDelta=0.033333 s` and
+0.0333-second post-physics intervals, corroborating the configured cap.
+
+At that cap, named-body windows 1–3 each show one finite `PreApply`, one
+`Applied`, 13 bounded `PostPhysics` samples through `ElapsedSecs=0.4000 s`,
+and exactly one `Restored`. All samples report a valid, simulating `spine_05`
+body; no crash or `Invalid Bodies` warning appears in the supplied evidence.
+
+Windows 4–5 each report `Result=MISS`, zero hit candidates, and
+`SampleCount=0`; no named-body response sample is present. The captures do not
+identify one miss as range and the other as lateral, so that distinction remains
+open.
+
+Still required: a named no-eligible-body fallback showing its existing 250
+cm/s capsule shove and no named-body response samples; a re-hit inside 0.40 s;
+the equivalent explicit 60 FPS matrix; restart and clean hit after active
+teardown; no-asset-save confirmation; and final human acceptance. Evidence
+remains **COMPILES**.
