@@ -202,7 +202,8 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 							// Cancel any pending restore from a previous hit before re-applying
 							if (PhysicsRestoreHandle.IsValid())
 							{
-								ExecutePhysicsRestore();
+								// true: we are NOT inside the timer callback, so ClearTimer is safe here
+								ExecutePhysicsRestore(true);
 							}
 
 							// Upgrade collision and recreate physics state so Chaos creates simulation actors
@@ -330,7 +331,8 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 											if (UBECombatComponent* SelfPtr = WeakSelf.Get())
 											{
 												const bool bMeshWasValid = SelfPtr->PendingRestoreMesh.IsValid();
-												SelfPtr->ExecutePhysicsRestore();
+												// false: this IS the expiry callback; ClearTimer on the executing handle crashes the timer manager
+												SelfPtr->ExecutePhysicsRestore(false);
 												if (bMeshWasValid)
 												{
 													UE_LOG(LogTemp, Log,
@@ -611,11 +613,16 @@ void UBECombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 	++ResponseSampleOrdinal;
 }
 
-void UBECombatComponent::ExecutePhysicsRestore()
+void UBECombatComponent::ExecutePhysicsRestore(bool bCancelRestoreTimer)
 {
-	if (UWorld* W = GetWorld())
+	// Only cancel the timer when we are not already inside the timer's own callback.
+	// Calling ClearTimer on the currently-executing timer handle crashes the timer manager.
+	if (bCancelRestoreTimer)
 	{
-		W->GetTimerManager().ClearTimer(PhysicsRestoreHandle);
+		if (UWorld* W = GetWorld())
+		{
+			W->GetTimerManager().ClearTimer(PhysicsRestoreHandle);
+		}
 	}
 	PhysicsRestoreHandle.Invalidate();
 	if (PendingRestoreMesh.IsValid())
@@ -634,7 +641,8 @@ void UBECombatComponent::OnUnregister()
 	if (W && !W->bIsTearingDown)
 	{
 		// Active world: restore Bob's physics so the reaction does not outlive the attacker component
-		ExecutePhysicsRestore();
+		// true: we are not inside the timer callback, so ClearTimer is safe
+		ExecutePhysicsRestore(true);
 	}
 	else
 	{

@@ -60,9 +60,11 @@ protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
-	// Cancels any pending restore timer, restores Bob's physics/collision, and clears state.
+	// Restores Bob's physics/collision and clears state.
+	// bCancelRestoreTimer=true: also calls ClearTimer (re-hit cancel, active-world unregister).
+	// bCancelRestoreTimer=false: skips ClearTimer because the timer is the current caller (expiry lambda).
 	// Only call during an active world; skip during teardown (bIsTearingDown) to avoid Invalid Bodies.
-	void ExecutePhysicsRestore();
+	void ExecutePhysicsRestore(bool bCancelRestoreTimer);
 
 	// Disables the PostPhysics tick and resets all BE-0004 sampling fields.
 	// Safe to call any time the response ends (restore, re-hit cancel, unregister, teardown path excluded).
