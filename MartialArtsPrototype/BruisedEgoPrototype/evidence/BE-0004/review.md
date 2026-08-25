@@ -1,6 +1,6 @@
 # BE-0004 — independent Sol implementation review
 
-Date: **2026-08-25**  
+Date: **2026-08-25**
 Reviewer: **Codex, with required Sol physics/lifecycle gate**  
 Current evidence: **COMPILES**. The corrected source passed final Sol
 re-review; PIE verification is authorized.
@@ -103,3 +103,35 @@ UE 5.8.1 executes `TG_PostPhysics` before TimerManager. An expiry-frame
 post-physics sample can therefore appear before that frame's restoration. This
 is expected bounded behaviour; record it during PIE rather than requiring its
 absence.
+
+## PIE crash diagnosis — source repair required
+
+Date: **2026-08-25**
+Evidence: the first named-body punch produced valid bounded post-physics
+samples through `ElapsedSecs=0.4000 s`, then Unreal Editor crashed before a
+`Phase=Restored` record. The call stack identifies the restore timer lambda at
+`BECombatComponent.cpp:336`.
+
+**Finding (high confidence):** the restore timer lambda calls
+`ExecutePhysicsRestore()`, which calls `ClearTimer(PhysicsRestoreHandle)` on
+the timer that is currently executing. In UE 5.8.1, the `Executing` path
+removes that timer's `FTimerData` immediately. Its `FTimerDelegate` owns the
+lambda closure, so the subsequent log reads of captured `CapturedBone` and
+`CapturedRoot` are use-after-free. `TWeakObjectPtr` protects the component
+pointer only; it does not keep the callback closure alive.
+
+**Required correction:** make timer cancellation explicit, with no default
+argument. The expiry callback must call
+`ExecutePhysicsRestore(/* bCancelRestoreTimer */ false)`, while re-hit and
+active-world unregister paths call it with `true`. Only the cancellation path
+may call `ClearTimer`; both paths must invalidate the component's handle and
+clear restore/sampling state. The one-shot expiry timer will then be removed by
+`FTimerManager` after its callback returns. Do not substitute a weak-bound
+delegate alone; that does not fix self-removal.
+
+**Verification required after correction:** rebuild the named Editor target,
+then test one normal expiry and `Phase=Restored` log, a re-hit inside 0.40 s,
+30/60 FPS repeated named-body hits, and stopping PIE during an active response.
+Confirm no crash, no `Invalid Bodies` warning, and exactly one restoration per
+response. The evidence label remains **COMPILES**; PIE acceptance failed and
+must restart after the repair.

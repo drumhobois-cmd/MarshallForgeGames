@@ -1,6 +1,6 @@
 # BE-0004 — measure named-body response observability
 
-Status: `HUMAN VERIFICATION — PIE MATRIX AUTHORIZED`  
+Status: `BLOCKED — PIE CRASH DIAGNOSED; SOURCE REPAIR REQUIRED`
 Owner: `Claude`  
 Reviewer: `Codex`  
 Final acceptance: `Human`  
@@ -192,6 +192,9 @@ At both `t.MaxFPS 30` and `t.MaxFPS 60`:
 ## Review findings
 
 Independent Sol review initially found three P2 blockers. Commit `6f5ffbb`
-corrected them, rebuilt successfully, and passed final Sol re-review. PIE is
-authorized; see `evidence/BE-0004/review.md`. `TG_PostPhysics` runs before
-TimerManager, so an expiry-frame post-physics sample may precede restoration.
+corrected them, rebuilt successfully, and passed final Sol re-review. The
+first named-body PIE hit then crashed in the restore timer callback; see
+`evidence/BE-0004/review.md`. The task remains `COMPILES`, not
+`PLAYTEST-VERIFIED`, until the source repair builds and the PIE matrix is
+restarted. `TG_PostPhysics` runs before TimerManager, so an expiry-frame
+post-physics sample may precede restoration.
