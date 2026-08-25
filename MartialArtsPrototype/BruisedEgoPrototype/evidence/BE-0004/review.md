@@ -257,3 +257,21 @@ No crash or `Invalid Bodies` warning is visible. The 60 FPS fallback, explicit
 range/lateral identity, active-response teardown at both caps, re-hit
 cancellation, post-teardown restart, no-save confirmation, and human
 acceptance remain outstanding. Evidence remains **COMPILES**.
+
+## 60 FPS fallback evidence — passed
+
+Date: **2026-08-25**
+
+The supplied recording visibly shows `t.MaxFPS = "60"`, a PIE world maximum
+tick rate of 60, and the live attacker's `UpperBodyChainRoot=NoEligibleChain`
+before the test jab. The visible Output Log records a hit window with
+`TickDelta=0.016667 s`, followed by `Phase=Applied | WindowId=1 |
+Branch=CapsuleFallback | Reason=NoNamedBodyResolved |
+LaunchVelocity=250.0 cm/s`. No `BE_RESPONSE_SAMPLE_V1` record is visible for
+that window.
+
+The fallback requirement is now evidenced at both caps without changing the
+project default `spine_03` setting. No crash or `Invalid Bodies` warning is
+visible. Re-hit cancellation, active-response teardown at both caps,
+post-teardown restart, explicit range/lateral identity, no-save confirmation,
+and human acceptance remain outstanding. Evidence remains **COMPILES**.

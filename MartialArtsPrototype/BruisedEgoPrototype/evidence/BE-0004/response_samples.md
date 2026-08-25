@@ -24,4 +24,6 @@ in the supplied excerpts.
 `Branch=CapsuleFallback | Reason=NoNamedBodyResolved | LaunchVelocity=250.0 cm/s`
 on a hit window. No `BE_RESPONSE_SAMPLE_V1` record is visible for that window.
 
-Still required: the equivalent 60 FPS fallback capture.
+**60 FPS fallback:** the equivalent runtime override records the same fallback
+line on a hit window with `TickDelta=0.016667 s`; no
+`BE_RESPONSE_SAMPLE_V1` record is visible for that window.
