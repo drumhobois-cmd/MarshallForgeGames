@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "TimerManager.h"
+#include "Engine/EngineTypes.h"
 #include "BECombatComponent.generated.h"
 
 class UAnimMontage;
@@ -35,16 +37,46 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Combat")
 	TObjectPtr<UAnimMontage> JabMontage;
 
+	// BE-0003 experiment parameters — tunable in the Details panel without a rebuild
+	UPROPERTY(EditAnywhere, Category="Combat|Experiment", meta=(ClampMin="0.01"))
+	float UpperBodyReactionDurationSecs = 0.4f;
+
+	UPROPERTY(EditAnywhere, Category="Combat|Experiment")
+	float UpperBodyResponseVelocity = 200.0f;
+
+	UPROPERTY(EditAnywhere, Category="Combat|Experiment")
+	FName UpperBodyChainRoot = TEXT("spine_03");
+
+	UPROPERTY(EditAnywhere, Category="Combat|Experiment", meta=(ClampMin="1.0"))
+	float MaxBodyResolutionRadiusCm = 50.0f;
+
 	// Fist sweep window — called by UBEAnimNotifyState_JabWindow
 	void BeginFistSweep(USkeletalMeshComponent* Mesh, FName SocketName);
-	void UpdateFistSweep(USkeletalMeshComponent* Mesh, FName SocketName);
+	void UpdateFistSweep(USkeletalMeshComponent* Mesh, FName SocketName, float FrameDeltaTime);
 	void EndFistSweep();
 
+protected:
+	virtual void OnUnregister() override;
+
 private:
+	// Cancels any pending restore timer, restores Bob's physics/collision, and clears state.
+	// Only call during an active world; skip during teardown (bIsTearingDown) to avoid Invalid Bodies.
+	void ExecutePhysicsRestore();
 	UPROPERTY(VisibleAnywhere, Category="Combat")
 	bool bIsInFightingStance;
 
 	bool bFistSweepActive = false;
 	FVector PreviousFistLocation = FVector::ZeroVector;
 	bool bHitLoggedThisWindow = false;
+
+	uint32 CurrentWindowId = 0;
+	int32 WindowTickCount = 0;
+	int32 HitFrameCandidateHitCount = 0;
+	int32 HitFrameSkeletalCandidateHitCount = 0;
+
+	// BE-0003 upper-body restore state
+	TWeakObjectPtr<USkeletalMeshComponent> PendingRestoreMesh;
+	FTimerHandle PhysicsRestoreHandle;
+	FName ActiveRestoreChainRoot;
+	ECollisionEnabled::Type ActiveRestoreCollision = ECollisionEnabled::QueryOnly;
 };

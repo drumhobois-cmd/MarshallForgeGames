@@ -4,7 +4,10 @@
 #include "GameFramework/Character.h"
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "PhysicsEngine/BodyInstance.h"
 #include "DrawDebugHelpers.h"
+#include "PhysicsEngine/PhysicsAsset.h"
+#include "PhysicsEngine/SkeletalBodySetup.h"
 
 UBECombatComponent::UBECombatComponent()
 {
@@ -61,12 +64,16 @@ void UBECombatComponent::BeginFistSweep(USkeletalMeshComponent* Mesh, FName Sock
 {
 	if (!Mesh) return;
 
+	++CurrentWindowId;
+	WindowTickCount = 0;
+	HitFrameCandidateHitCount = 0;
+	HitFrameSkeletalCandidateHitCount = 0;
 	PreviousFistLocation = Mesh->GetSocketLocation(SocketName);
 	bFistSweepActive = true;
 	bHitLoggedThisWindow = false;
 }
 
-void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName SocketName)
+void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName SocketName, float FrameDeltaTime)
 {
 	if (!bFistSweepActive || !Mesh) return;
 
@@ -96,10 +103,25 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 		Params
 	);
 
+	++WindowTickCount;
+
 	if (!bHitLoggedThisWindow)
 	{
-		for (const FHitResult& Hit : Hits)
+		// Raw result count and skeletal count (no actor filter; inspection only, does not alter ordering or selection)
+		const int32 CandidateHitCount = Hits.Num();
+		int32 SkeletalCandidateHitCount = 0;
+		for (const FHitResult& CandHit : Hits)
 		{
+			if (Cast<USkeletalMeshComponent>(CandHit.GetComponent()))
+			{
+				++SkeletalCandidateHitCount;
+			}
+		}
+
+		// Selection loop — identical ordering and actor-validity gate to baseline; indexed to record SelectedHitIndex
+		for (int32 HitIdx = 0; HitIdx < Hits.Num(); ++HitIdx)
+		{
+			const FHitResult& Hit = Hits[HitIdx];
 			if (Hit.GetActor())
 			{
 				UE_LOG(LogTemp, Log, TEXT("Fist contact: %s"), *Hit.GetActor()->GetName());
@@ -112,9 +134,268 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 					const FVector ShoveDir = (Target->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal2D();
 					if (!ShoveDir.IsNearlyZero())
 					{
-						Target->LaunchCharacter(ShoveDir * 250.0f, true, false);
+						// --- BE-0003: exact Physics Asset body-geometry resolution from the capsule impact point ---
+						// GetClosestPointOnPhysicsAsset (bApproximate=false) resolves the nearest PA body surface to
+						// the capsule impact point. This is NOT a direct skeletal-mesh sweep hit; the sweep selected
+						// Bob's capsule. Proximity, chain membership, and pre-recreate body validity are checked
+						// before any physics-state change. The body pointer is re-acquired after RecreatePhysicsState
+						// because the prior pointer may be stale after physics recreation.
+						USkeletalMeshComponent* TargetSkel = Target->GetMesh();
+						FName ResolvedBone = NAME_None;
+						float ResolvedGeomDist = -1.0f;
+
+						if (TargetSkel)
+						{
+							FClosestPointOnPhysicsAsset ClosestResult;
+							if (TargetSkel->GetClosestPointOnPhysicsAsset(Hit.ImpactPoint, ClosestResult, /*bApproximate=*/false))
+							{
+								// Distance is body-surface distance in world-space cm; 0 = fist is inside the body
+								const float GeomDist = ClosestResult.Distance;
+								const bool bWithinProximity = (GeomDist >= 0.0f) && (GeomDist <= MaxBodyResolutionRadiusCm);
+
+								if (bWithinProximity && !ClosestResult.BoneName.IsNone())
+								{
+									// Chain membership: walk up from the resolved bone to UpperBodyChainRoot
+									bool bInUpperChain = false;
+									FName TestBone = ClosestResult.BoneName;
+									while (!TestBone.IsNone())
+									{
+										if (TestBone == UpperBodyChainRoot) { bInUpperChain = true; break; }
+										TestBone = TargetSkel->GetParentBone(TestBone);
+									}
+
+									if (bInUpperChain)
+									{
+										// Pre-check: verify a body instance exists before committing to physics recreation.
+										// The pointer is intentionally not stored; it is re-acquired after recreation.
+										FBodyInstance* PreBI = TargetSkel->GetBodyInstance(ClosestResult.BoneName);
+										if (PreBI && PreBI->IsValidBodyInstance())
+										{
+											ResolvedBone = ClosestResult.BoneName;
+											ResolvedGeomDist = GeomDist;
+										}
+									}
+								}
+							}
+						}
+
+						// Guard: finite, strictly positive duration required before any collision or simulation change
+						const bool bDurationValid = FMath::IsFinite(UpperBodyReactionDurationSecs) && UpperBodyReactionDurationSecs > 0.0f;
+						if (!ResolvedBone.IsNone() && !bDurationValid)
+						{
+							UE_LOG(LogTemp, Warning,
+								TEXT("BE_UPPER_BODY_RESPONSE_V1 | Phase=Skipped | WindowId=%u | Reason=InvalidDuration | Duration=%.4f"),
+								CurrentWindowId, UpperBodyReactionDurationSecs);
+						}
+						const bool bNamedBodyEligible = !ResolvedBone.IsNone() && bDurationValid;
+
+						if (bNamedBodyEligible)
+						{
+							// Cancel any pending restore from a previous hit before re-applying
+							if (PhysicsRestoreHandle.IsValid())
+							{
+								ExecutePhysicsRestore();
+							}
+
+							// Upgrade collision and recreate physics state so Chaos creates simulation actors
+							const ECollisionEnabled::Type OrigCollision = TargetSkel->GetCollisionEnabled();
+							TargetSkel->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+							TargetSkel->RecreatePhysicsState();
+
+							// Enable physics on the upper-body chain from the chain root
+							TargetSkel->SetAllBodiesBelowSimulatePhysics(UpperBodyChainRoot, true, true);
+
+							// Re-acquire the body instance after physics recreation; the pre-resolution pointer is stale
+							FBodyInstance* PostRecreateBody = TargetSkel->GetBodyInstance(ResolvedBone);
+							const bool bPostBodyValid = (PostRecreateBody != nullptr) && PostRecreateBody->IsValidBodyInstance();
+
+							if (bPostBodyValid)
+							{
+								// Apply velocity change to the resolved body (bVelChange=true ignores mass)
+								const FVector AppliedVelocity = ShoveDir * UpperBodyResponseVelocity;
+								PostRecreateBody->AddImpulse(AppliedVelocity, true);
+
+								// Record restore state
+								PendingRestoreMesh = TargetSkel;
+								ActiveRestoreChainRoot = UpperBodyChainRoot;
+								ActiveRestoreCollision = OrigCollision;
+
+								const uint32 WinId = CurrentWindowId;
+								const FName CapturedBone = ResolvedBone;
+								const FName CapturedRoot = UpperBodyChainRoot;
+								TWeakObjectPtr<UBECombatComponent> WeakSelf(this);
+
+								// Schedule bounded restoration; lambda delegates to ExecutePhysicsRestore for safe state management
+								GetWorld()->GetTimerManager().SetTimer(
+									PhysicsRestoreHandle,
+									FTimerDelegate::CreateLambda(
+										[WeakSelf, WinId, CapturedBone, CapturedRoot]()
+										{
+											if (UBECombatComponent* SelfPtr = WeakSelf.Get())
+											{
+												const bool bMeshWasValid = SelfPtr->PendingRestoreMesh.IsValid();
+												SelfPtr->ExecutePhysicsRestore();
+												if (bMeshWasValid)
+												{
+													UE_LOG(LogTemp, Log,
+														TEXT("BE_UPPER_BODY_RESPONSE_V1 | Phase=Restored | WindowId=%u | Bone=%s | ChainRoot=%s | PhysicsDisabled=true | CollisionRestored=true"),
+														WinId, *CapturedBone.ToString(), *CapturedRoot.ToString());
+												}
+												else
+												{
+													UE_LOG(LogTemp, Log,
+														TEXT("BE_UPPER_BODY_RESPONSE_V1 | Phase=RestoreSkipped | WindowId=%u | Reason=MeshGone"),
+														WinId);
+												}
+											}
+										}),
+									UpperBodyReactionDurationSecs,
+									false
+								);
+
+								UE_LOG(LogTemp, Log,
+									TEXT("BE_UPPER_BODY_RESPONSE_V1 | Phase=Applied | WindowId=%u | Branch=NamedBody")
+									TEXT(" | ResolvedBone=%s | GeomDist=%.1f cm | ResolutionSource=GetClosestPointOnPhysicsAsset_exact_from_capsule_impact")
+									TEXT(" | ChainRoot=%s | MaxProximityRadius=%.1f cm | ChainVerified=true | PostRecreateBodyValid=true")
+									TEXT(" | AppliedVelocity=(%.1f,%.1f,%.1f) cm/s | bVelChange=true | ReactionDurationSecs=%.2f")
+									TEXT(" | CollisionUpgraded=QueryOnly->QueryAndPhysics"),
+									CurrentWindowId, *ResolvedBone.ToString(), ResolvedGeomDist,
+									*UpperBodyChainRoot.ToString(), MaxBodyResolutionRadiusCm,
+									AppliedVelocity.X, AppliedVelocity.Y, AppliedVelocity.Z,
+									UpperBodyReactionDurationSecs);
+							}
+							else
+							{
+								// Post-recreate body invalid: undo physics-state changes immediately and execute capsule fallback
+								TargetSkel->SetAllBodiesBelowSimulatePhysics(UpperBodyChainRoot, false, true);
+								TargetSkel->SetCollisionEnabled(OrigCollision);
+								TargetSkel->RecreatePhysicsState();
+
+								Target->LaunchCharacter(ShoveDir * 250.0f, true, false);
+
+								UE_LOG(LogTemp, Log,
+									TEXT("BE_UPPER_BODY_RESPONSE_V1 | Phase=Applied | WindowId=%u | Branch=CapsuleFallback | Reason=PostRecreateBodyInvalid | ResolvedBone=%s | LaunchVelocity=250.0 cm/s"),
+									CurrentWindowId, *ResolvedBone.ToString());
+							}
+						}
+						else
+						{
+							// Capsule fallback: no eligible named body resolved or invalid duration
+							Target->LaunchCharacter(ShoveDir * 250.0f, true, false);
+
+							UE_LOG(LogTemp, Log,
+								TEXT("BE_UPPER_BODY_RESPONSE_V1 | Phase=Applied | WindowId=%u | Branch=CapsuleFallback | Reason=NoNamedBodyResolved | LaunchVelocity=250.0 cm/s"),
+								CurrentWindowId);
+						}
 					}
 				}
+
+				// --- BE_CONTACT_SAMPLE_V1 ---
+				HitFrameCandidateHitCount = CandidateHitCount;
+				HitFrameSkeletalCandidateHitCount = SkeletalCandidateHitCount;
+
+				const FString AttackerStr = GetOwner() ? GetOwner()->GetName() : TEXT("Unavailable");
+				UPrimitiveComponent* SelectedComp = Hit.GetComponent();
+				const FString CompName  = SelectedComp ? SelectedComp->GetName() : TEXT("Unavailable");
+				const FString CompClass = SelectedComp ? SelectedComp->GetClass()->GetName() : TEXT("Unavailable");
+				const FString BoneStr   = Hit.BoneName.IsNone() ? TEXT("None") : Hit.BoneName.ToString();
+
+				// TickDelta: reportable only when finite and strictly positive; zero/negative/non-finite → Unavailable
+				FString TickDeltaStr;
+				if (!FMath::IsFinite(FrameDeltaTime))
+					TickDeltaStr = TEXT("Unavailable (non-finite)");
+				else if (FrameDeltaTime <= 0.0f)
+					TickDeltaStr = FString::Printf(TEXT("Unavailable (non-positive: %.6f s)"), FrameDeltaTime);
+				else
+					TickDeltaStr = FString::Printf(TEXT("%.6f s"), FrameDeltaTime);
+
+				// Path-speed: double precision avoids float narrowing; guard delta > 0, finite non-negative distance and quotient
+				FString SpeedStr;
+				if (FMath::IsFinite(FrameDeltaTime) && FrameDeltaTime > 0.0f)
+				{
+					const double PathDist = static_cast<double>(FVector::Dist(PreviousFistLocation, CurrentFistLocation));
+					if (FMath::IsFinite(PathDist) && PathDist >= 0.0)
+					{
+						const double PathSpeedCmS = PathDist / static_cast<double>(FrameDeltaTime);
+						if (FMath::IsFinite(PathSpeedCmS) && PathSpeedCmS >= 0.0)
+							SpeedStr = FString::Printf(TEXT("%.1f cm/s (kinematic path-speed estimate)"), PathSpeedCmS);
+						else
+							SpeedStr = TEXT("Unavailable (non-finite quotient)");
+					}
+					else
+					{
+						SpeedStr = TEXT("Unavailable (non-finite path distance)");
+					}
+				}
+				else
+				{
+					SpeedStr = TEXT("Unavailable (invalid delta)");
+				}
+
+				// Component-level simulation: Unavailable if null component
+				const FString CompSimStr = SelectedComp
+					? (SelectedComp->IsSimulatingPhysics() ? TEXT("true") : TEXT("false"))
+					: TEXT("Unavailable");
+
+				// Named-body simulation and mass: require skeletal component, non-None BoneName, valid body instance
+				FString BodySimStr;
+				FString MassStr;
+				USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(SelectedComp);
+				if (!SkelComp)
+				{
+					BodySimStr = TEXT("Unavailable (not skeletal)");
+					MassStr    = TEXT("Unavailable (not skeletal)");
+				}
+				else if (Hit.BoneName.IsNone())
+				{
+					BodySimStr = TEXT("Unavailable (BoneName None)");
+					MassStr    = TEXT("Unavailable (BoneName None)");
+				}
+				else
+				{
+					FBodyInstance* BodyInst = SkelComp->GetBodyInstance(Hit.BoneName);
+					if (!BodyInst)
+					{
+						BodySimStr = TEXT("Unavailable (no body instance)");
+						MassStr    = TEXT("Unavailable (no body instance)");
+					}
+					else if (!BodyInst->IsValidBodyInstance())
+					{
+						BodySimStr = TEXT("Unavailable (invalid body instance)");
+						MassStr    = TEXT("Unavailable (invalid body instance)");
+					}
+					else
+					{
+						BodySimStr = SkelComp->IsSimulatingPhysics(Hit.BoneName) ? TEXT("true") : TEXT("false");
+						const float BoneMassKg = SkelComp->GetBoneMass(Hit.BoneName, true);
+						if (FMath::IsFinite(BoneMassKg) && BoneMassKg > 0.0f)
+							MassStr = FString::Printf(TEXT("%.2f kg (source: USkeletalMeshComponent::GetBoneMass)"), BoneMassKg);
+						else
+							MassStr = FString::Printf(TEXT("Unavailable (non-positive mass: %.4f)"), BoneMassKg);
+					}
+				}
+
+				UE_LOG(LogTemp, Log,
+					TEXT("BE_CONTACT_SAMPLE_V1 | WindowId=%u | Attacker=%s | CandidateHitCount=%d | SkeletalCandidateHitCount=%d | SelectedHitIndex=%d")
+					TEXT(" | Actor=%s | Component=%s | ComponentClass=%s | BoneName=%s")
+					TEXT(" | SweepStart=(%.1f,%.1f,%.1f) cm | SweepEnd=(%.1f,%.1f,%.1f) cm | SweepRadius=6.0 cm")
+					TEXT(" | TickDelta=%s | PathSpeedEstimate=%s")
+					TEXT(" | ImpactPoint=(%.1f,%.1f,%.1f) cm | ImpactNormal=(%.3f,%.3f,%.3f) unitless")
+					TEXT(" | BlockingHit=%s | StartPenetrating=%s")
+					TEXT(" | ComponentSimulatingPhysics=%s | BodySimulatingPhysics=%s | BodyMass=%s"),
+					CurrentWindowId, *AttackerStr,
+					CandidateHitCount, SkeletalCandidateHitCount, HitIdx,
+					*Hit.GetActor()->GetName(), *CompName, *CompClass, *BoneStr,
+					PreviousFistLocation.X, PreviousFistLocation.Y, PreviousFistLocation.Z,
+					CurrentFistLocation.X, CurrentFistLocation.Y, CurrentFistLocation.Z,
+					*TickDeltaStr, *SpeedStr,
+					Hit.ImpactPoint.X, Hit.ImpactPoint.Y, Hit.ImpactPoint.Z,
+					Hit.ImpactNormal.X, Hit.ImpactNormal.Y, Hit.ImpactNormal.Z,
+					Hit.bBlockingHit ? TEXT("true") : TEXT("false"),
+					Hit.bStartPenetrating ? TEXT("true") : TEXT("false"),
+					*CompSimStr, *BodySimStr, *MassStr
+				);
+				// --- end BE_CONTACT_SAMPLE_V1 ---
 
 				break;
 			}
@@ -126,6 +407,56 @@ void UBECombatComponent::UpdateFistSweep(USkeletalMeshComponent* Mesh, FName Soc
 
 void UBECombatComponent::EndFistSweep()
 {
+	if (!bFistSweepActive) return;
+
+	const FString AttackerStr = GetOwner() ? GetOwner()->GetName() : TEXT("Unavailable");
+	UE_LOG(LogTemp, Log,
+		TEXT("BE_CONTACT_WINDOW_V1 | WindowId=%u | Attacker=%s | Result=%s | SampleCount=%d | TotalTicks=%d | HitFrameCandidateHitCount=%d | HitFrameSkeletalCandidateHitCount=%d"),
+		CurrentWindowId, *AttackerStr,
+		bHitLoggedThisWindow ? TEXT("HIT") : TEXT("MISS"),
+		bHitLoggedThisWindow ? 1 : 0,
+		WindowTickCount,
+		bHitLoggedThisWindow ? HitFrameCandidateHitCount : 0,
+		bHitLoggedThisWindow ? HitFrameSkeletalCandidateHitCount : 0
+	);
+
 	bFistSweepActive = false;
 	bHitLoggedThisWindow = false;
+	WindowTickCount = 0;
+	HitFrameCandidateHitCount = 0;
+	HitFrameSkeletalCandidateHitCount = 0;
+}
+
+void UBECombatComponent::ExecutePhysicsRestore()
+{
+	if (UWorld* W = GetWorld())
+	{
+		W->GetTimerManager().ClearTimer(PhysicsRestoreHandle);
+	}
+	PhysicsRestoreHandle.Invalidate();
+	if (PendingRestoreMesh.IsValid())
+	{
+		PendingRestoreMesh->SetAllBodiesBelowSimulatePhysics(ActiveRestoreChainRoot, false, true);
+		PendingRestoreMesh->SetCollisionEnabled(ActiveRestoreCollision);
+		PendingRestoreMesh->RecreatePhysicsState();
+	}
+	PendingRestoreMesh.Reset();
+}
+
+void UBECombatComponent::OnUnregister()
+{
+	UWorld* W = GetWorld();
+	if (W && !W->bIsTearingDown)
+	{
+		// Active world: restore Bob's physics so the reaction does not outlive the attacker component
+		ExecutePhysicsRestore();
+	}
+	else
+	{
+		// World tearing down or null: skip physics mutation to avoid Invalid Bodies; cancel timer and clear state only
+		if (W) { W->GetTimerManager().ClearTimer(PhysicsRestoreHandle); }
+		PhysicsRestoreHandle.Invalidate();
+		PendingRestoreMesh.Reset();
+	}
+	Super::OnUnregister();
 }

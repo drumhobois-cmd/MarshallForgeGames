@@ -47,7 +47,7 @@ void UBEAnimNotifyState_JabWindow::NotifyTick(USkeletalMeshComponent* MeshComp, 
 	ABECharacter* Character = Cast<ABECharacter>(MeshComp->GetOwner());
 	if (!Character) return;
 
-	Character->GetCombatComponent()->UpdateFistSweep(MeshComp, FistSocketName);
+	Character->GetCombatComponent()->UpdateFistSweep(MeshComp, FistSocketName, FrameDeltaTime);
 }
 
 void UBEAnimNotifyState_JabWindow::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
