@@ -293,3 +293,21 @@ the separate no-asset-save criterion. Still required: the equivalent 30 FPS
 active-response teardown, re-hit cancellation, post-teardown restart/clean
 hit, explicit range/lateral identity, no-save confirmation, and human
 acceptance. Evidence remains **COMPILES**.
+
+## 30 FPS active-response teardown — passed
+
+Date: **2026-08-25**
+
+The supplied 30 FPS log enters the normal `Branch=NamedBody` response with
+`ChainRoot=spine_03` and `TickDelta=0.033333 s`. It records seven valid,
+simulating post-physics samples (ordinal 0–6) through `ElapsedSecs=0.2000 s`,
+then `BeginTearingDown` and `CleanupWorld`. There is no `Phase=Restored`, as
+expected because PIE stopped inside the configured 0.40 s response, and no
+fatal error or `Invalid Bodies` warning occurs.
+
+The recording visibly confirms `Cmd: t.MaxFPS 30` and `t.MaxFPS = "30"`.
+Active-response teardown is therefore evidenced at both required caps. The
+separate no-asset-save criterion remains unknown. Still required: re-hit
+cancellation, post-teardown restart/clean hit, explicit range/lateral miss
+identity, no-save confirmation, and human acceptance. Evidence remains
+**COMPILES**.

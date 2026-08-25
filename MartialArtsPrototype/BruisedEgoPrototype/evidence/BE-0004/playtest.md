@@ -9,7 +9,7 @@ Date: **2026-08-25**
 | Three eligible torso hits | Three complete named-body responses | Three complete named-body responses | Observed |
 | Range and lateral miss | Two zero-candidate misses; geometry labels absent | Two zero-candidate misses; geometry labels absent | Partial |
 | No-eligible-body fallback | Runtime `NoEligibleChain`: 250 cm/s capsule fallback; no response sample shown | Same fallback at `TickDelta=0.016667 s`; no response sample shown | Observed |
-| Stop PIE during active response | Earlier uncapped partial capture only | Named response stopped at `0.1667 s`; no restore/crash/`Invalid Bodies` | Partial / observed at 60 |
+| Stop PIE during active response | Named response stopped at `0.2000 s`; no restore/crash/`Invalid Bodies` | Named response stopped at `0.1667 s`; no restore/crash/`Invalid Bodies` | Observed |
 | Restart after active teardown, then normal hit | Not captured | Not captured | NOT RUN |
 | Re-hit within 0.40 s | Not captured | Not captured | NOT RUN |
 | No asset saves | Not recorded | Not recorded | UNKNOWN |
