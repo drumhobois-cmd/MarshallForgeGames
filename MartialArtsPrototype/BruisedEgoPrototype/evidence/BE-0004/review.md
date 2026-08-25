@@ -311,3 +311,22 @@ separate no-asset-save criterion remains unknown. Still required: re-hit
 cancellation, post-teardown restart/clean hit, explicit range/lateral miss
 identity, no-save confirmation, and human acceptance. Evidence remains
 **COMPILES**.
+
+## 60 FPS rapid double-click re-hit attempt — cancellation not exercised
+
+Date: **2026-08-25**
+
+The supplied 60 FPS capture uses `TickDelta=0.016667 s` and contains two
+valid named-body torso-hit windows. It does **not** prove re-hit cancellation:
+Window 1 completes its bounded samples and logs `Phase=Restored` at `0.4000 s`
+before Window 2 emits `PreApply`/`Applied`. Window 2 then independently runs
+to its own one normal restoration. No crash or `Invalid Bodies` warning is
+present.
+
+The rapid double-click therefore appears queued by the current calibration
+input/montage path, rather than producing two contact windows inside the
+response duration. This is neither a cancellation pass nor evidence that the
+timer-cancellation implementation is wrong. Re-hit cancellation remains
+unverified; do not alter assets to force it. If a second named hit cannot be
+generated before the first restoration, record that constraint and decide a
+separately scoped, source-level test hook with the human owner.
