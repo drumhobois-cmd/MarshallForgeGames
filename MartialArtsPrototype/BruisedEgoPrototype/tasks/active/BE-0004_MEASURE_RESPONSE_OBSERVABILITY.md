@@ -1,6 +1,6 @@
 # BE-0004 — measure named-body response observability
 
-Status: `READY`  
+Status: `IN PROGRESS — P2 REVIEW CORRECTIONS REQUESTED`  
 Owner: `Claude`  
 Reviewer: `Codex`  
 Final acceptance: `Human`  
@@ -188,3 +188,11 @@ At both `t.MaxFPS 30` and `t.MaxFPS 60`:
   between a body solver mass and an effective constrained-chain mass.
 - Suggested next task: decide calibration only after BE-0004 evidence exists;
   do not start that task automatically.
+
+## Review findings
+
+Independent Sol review found three P2 blockers before PIE: invalid-body samples
+log zero-valued physical measurements instead of explicit unavailable values;
+the sampled Physics Asset point is fixed in world space rather than attached
+to the responding body; and teardown leaves part of the sampling state stale.
+See `evidence/BE-0004/review.md`. Claude must correct and rebuild before PIE.
