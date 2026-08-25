@@ -1,8 +1,8 @@
 # Bruised Ego — current implementation state
 
 Baseline date: **2026-08-25**  
-Active task: **BE-0004 — HUMAN VERIFICATION: response-observability PIE matrix**  
-Highest current evidence: **PLAYTEST-VERIFIED** for the BE-0003 named-body upper-body reaction, fallback, restoration/teardown, and 30/60 FPS matrix.
+Active task: **None — BE-0004 accepted and archived**
+Highest current evidence: **PLAYTEST-VERIFIED** for the BE-0003 named-body upper-body reaction and the BE-0004 response-observability matrix.
 
 This file records only facts checked against the live project. Verification maturity uses the canonical labels in `AGENTS.md`. Provenance—live source, serialized asset reference, Editor log, or user playtest—is stated separately.
 
@@ -119,7 +119,7 @@ It references `MM_Attack_01` and is not the montage serialized into the current 
 | BE-0003 restoration and teardown | **PLAYTEST-VERIFIED** | Every completed fresh response logged exactly one `Phase=Restored`; an active-response PIE stop produced no `Invalid Bodies` warning, extra restoration, or crash. |
 | BE-0003 miss produces no response | **PLAYTEST-VERIFIED** | WindowId=1 MISS; no `BE_UPPER_BODY_RESPONSE_V1` Applied entry emitted |
 | BE-0003 30/60 FPS response matrix | **PLAYTEST-VERIFIED** | At each cap, one range miss (WindowId 1), three exact-PA-geometry `spine_05` responses (WindowIds 2–4), and one lateral miss (WindowId 5) were recorded. Each hit applied and restored the 0.40 s response; no crash or teardown warning was recorded. See `evidence/BE-0003/review.md`. |
-| BE-0004 response-observability implementation | **COMPILES** | Commit `6f5ffbb` adds bounded PreApply and post-physics telemetry without changing the BE-0003 response/fallback. The UE 5.8.1 Editor Development rebuild succeeded; final Sol review authorizes the PIE matrix. |
+| BE-0004 response observability | **PLAYTEST-VERIFIED** | Bounded PreApply/PostPhysics telemetry, labelled 30/60 named hits/misses, fallback, teardown, and restart evidence passed. The human confirmed no asset saves and accepted the one limitation: current queued left-click input cannot manually exercise re-hit cancellation. |
 | Cross and guard | **PROPOSED** | Target-slice goals only; no live implementation identified |
 
 ## Animation, physics, and collision facts
@@ -170,3 +170,5 @@ BE-0003 was human-accepted on 2026-08-25 and archived under `tasks/completed/`. 
 - `evidence/BE-0003/review.md`
 - `evidence/BE-0004/build_summary.md`
 - `evidence/BE-0004/review.md`
+- `evidence/BE-0004/response_samples.md`
+- `evidence/BE-0004/playtest.md`

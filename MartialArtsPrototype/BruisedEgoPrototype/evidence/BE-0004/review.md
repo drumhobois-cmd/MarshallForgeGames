@@ -2,8 +2,8 @@
 
 Date: **2026-08-25**
 Reviewer: **Codex, with required Sol physics/lifecycle gate**  
-Current evidence: **COMPILES**. The corrected source passed final Sol
-re-review; PIE verification is authorized.
+Current evidence: **PLAYTEST-VERIFIED**. The corrected source passed final Sol
+re-review and the human accepted the recorded PIE evidence and limitation.
 
 ## Build evidence reviewed
 
@@ -366,3 +366,19 @@ do not separately establish the absence of content-package saves. The
 no-asset-save criterion therefore remains **UNKNOWN**. Evidence remains
 **COMPILES** pending that confirmation, the separately unreachable manual
 re-hit case, and human acceptance.
+
+## Final review — accepted
+
+Date: **2026-08-25**
+
+The human confirmed that no assets were saved during the PIE matrix and
+accepted BE-0004 with the documented re-hit limitation. The source-level
+re-hit cancellation path remains reviewed and compiled, but the current
+left-click calibration input queues a second jab until after the active
+0.40-second response ends, so that branch was not manually exercised. This is
+an accepted test limitation for BE-0004, not a claim that final combat input
+should retain the queueing behaviour.
+
+All other required build, 30/60 FPS named-body, range/lateral miss, fallback,
+active teardown, restart, telemetry, and lifecycle evidence is recorded in the
+BE-0004 evidence set. **Final evidence: PLAYTEST-VERIFIED.**

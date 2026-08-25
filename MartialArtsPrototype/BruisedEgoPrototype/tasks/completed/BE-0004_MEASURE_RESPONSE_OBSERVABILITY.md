@@ -1,6 +1,6 @@
 # BE-0004 — measure named-body response observability
 
-Status: `HUMAN VERIFICATION — PIE MATRIX PARTIAL`
+Status: `HUMAN ACCEPTED — COMPLETED`
 Owner: `Claude`  
 Reviewer: `Codex`  
 Final acceptance: `Human`  
@@ -209,3 +209,12 @@ reaches world teardown without a visible `Invalid Bodies` warning. They do not
 record `t.MaxFPS`, a re-hit, misses, fallback, a post-teardown restart, or the
 full 30/60 FPS matrix. See `evidence/BE-0004/review.md`; evidence remains
 `COMPILES` until those cases pass.
+
+## Final acceptance
+
+The human accepted the completed BE-0004 evidence on 2026-08-25 and confirmed
+that no assets were saved during the PIE matrix. The current queued left-click
+calibration input could not generate a second hit inside the 0.40 s response,
+so re-hit cancellation is an accepted, documented test limitation rather than
+a manually demonstrated scenario. The source path was independently reviewed
+and compiled. Final evidence label: `PLAYTEST-VERIFIED`.

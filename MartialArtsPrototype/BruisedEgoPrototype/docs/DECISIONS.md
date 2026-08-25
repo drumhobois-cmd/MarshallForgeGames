@@ -16,6 +16,7 @@ Record durable choices here. Do not rewrite history: mark a decision superseded 
 | BE-D010 | 2026-08-19 | Accepted | Prove the physics response architecture in a narrow, instrumented combat spike before scaling content. | The system is the highest-risk dependency and must be measured early. |
 | BE-D011 | 2026-08-19 | Accepted | Do not guess build commands or `/Game/...` asset paths in automation/docs. | Unknown values are safer and faster to correct than plausible-looking false facts. |
 | BE-D012 | 2026-08-20 | Accepted | Route Codex work through Luna for bounded mechanical tasks, Terra as the normal default, and Sol only for explicitly high-risk or high-ambiguity decisions, especially Unreal physics/API work. | Reduces routine model cost without allowing lower-cost work to invent Unreal facts or approve physics-sensitive changes. The routing table and escalation rules live in `AGENTS.md`. |
+| BE-D013 | 2026-08-25 | Accepted | Accept BE-0004 with re-hit cancellation manually unexercised by the current queued left-click calibration path. | The source cancellation path compiled and passed independent lifecycle review, but a second input queued after the 0.40 s response. This is a test limitation only, not a final-combat-input decision. |
 
 ## Decision entry template
 

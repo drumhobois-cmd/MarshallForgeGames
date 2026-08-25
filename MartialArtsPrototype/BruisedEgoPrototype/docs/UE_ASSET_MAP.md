@@ -1,7 +1,7 @@
 # Bruised Ego — Unreal asset and source map
 
 Last updated: **2026-08-25**  
-Active task: **BE-0004 — HUMAN VERIFICATION: response-observability PIE matrix; no asset-path change planned**
+Active task: **None — BE-0004 accepted; no asset-path change made**
 
 The package/object paths below were read from the live project and confirmed through the Unreal Editor's **Copy Reference** action. Verification maturity uses the canonical labels in `AGENTS.md`; provenance is stated separately. Exact class-qualified copied strings are in `evidence/BE-0001/asset_references.md`.
 

@@ -1,6 +1,6 @@
 # BE-0004 — response sample excerpts
 
-Evidence label: **COMPILES** (manual matrix partial)
+Evidence label: **PLAYTEST-VERIFIED** (human accepted)
 Date: **2026-08-25**
 
 This record summarizes the human-supplied PIE log captures. It records raw
